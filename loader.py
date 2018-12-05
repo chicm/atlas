@@ -16,7 +16,9 @@ def open_rgby(img_dir, id): #a function that reads RGBY image
     flags = cv2.IMREAD_GRAYSCALE
     img = [cv2.imread(os.path.join(img_dir, id+'_'+color+'.png'), flags).astype(np.float32)/255
            for color in colors]
-    return np.stack(img, axis=-1)
+    img = np.stack(img, axis=-1)
+    img = img.transpose((2,0,1))
+    return img
 
 
 class ImageDataset(data.Dataset):
@@ -46,19 +48,33 @@ class ImageDataset(data.Dataset):
         return len(self.img_ids)
 
 
-def get_train_loader(batch_size=4, dev_mode=False):
+def get_train_val_loader(batch_size=4, dev_mode=False, val_num=2000):
     df = pd.read_csv(settings.TRAIN_LABEL)
+    split_index = int(df.shape[0] * 0.9)
+    df_train = df.iloc[:split_index]
+    df_val = df.iloc[split_index:]
+    df_val = df_val.iloc[:val_num]
 
     if dev_mode:
-        df = df.iloc[:10]
-    img_dir = settings.TRAIN_IMG_DIR
-    img_ids = df['Id'].values.tolist()
-    labels = df['Target'].values.tolist()
+        df_train = df_train.iloc[:10]
+        df_val = df_val.iloc[:10]
 
-    dset = ImageDataset(img_dir, img_ids, labels, img_transform=None)
-    dloader = data.DataLoader(dset, batch_size=batch_size, shuffle=True, num_workers=4, drop_last=True)
-    dloader.num = len(dset)
-    return dloader
+    img_dir = settings.TRAIN_IMG_DIR
+    img_ids_train = df_train['Id'].values.tolist()
+    labels_train = df_train['Target'].values.tolist()
+
+    dset_train = ImageDataset(img_dir, img_ids_train, labels_train, img_transform=None)
+    dloader_train = data.DataLoader(dset_train, batch_size=batch_size, shuffle=True, num_workers=4, drop_last=True)
+    dloader_train.num = len(dset_train)
+
+    img_ids_val = df_val['Id'].values.tolist()
+    labels_val = df_val['Target'].values.tolist()
+
+    dset_val = ImageDataset(img_dir, img_ids_val, labels_val, img_transform=None)
+    dloader_val = data.DataLoader(dset_val, batch_size=batch_size, shuffle=False, num_workers=4, drop_last=False)
+    dloader_val.num = len(dset_val)
+
+    return dloader_train, dloader_val
 
 def get_test_loader(batch_size=4, dev_mode=False):
     df = pd.read_csv(settings.SAMPLE_SUBMISSION)
@@ -69,12 +85,12 @@ def get_test_loader(batch_size=4, dev_mode=False):
     img_ids = df['Id'].values.tolist()
 
     dset = ImageDataset(img_dir, img_ids, None, img_transform=None)
-    dloader = data.DataLoader(dset, batch_size=batch_size, shuffle=True, num_workers=4, drop_last=True)
+    dloader = data.DataLoader(dset, batch_size=batch_size, shuffle=False, num_workers=4, drop_last=False)
     dloader.num = len(dset)
     return dloader
 
 def test_train_loader():
-    loader = get_train_loader(batch_size=10, dev_mode=True)
+    loader, _ = get_train_val_loader(batch_size=10, dev_mode=True)
     for i, (img, target) in enumerate(loader):
         print(img.size(), target.size())
         print(img)
@@ -89,12 +105,12 @@ def test_val_loader():
         print(torch.max(img), torch.min(img))
 
 def test_test_loader():
-    loader = get_test_loader(dev_mode=True, tta_index=1)
+    loader = get_test_loader(dev_mode=True)
     print(loader.num)
     for img in loader:
         print(img.size())
 
 if __name__ == '__main__':
-    test_train_loader()
+    #test_train_loader()
     #test_val_loader()
-    #test_test_loader()
+    test_test_loader()

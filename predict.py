@@ -8,28 +8,26 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 import settings
-from loader import get_test_loader
+from loader import get_test_loader, get_train_val_loader
 import cv2
-from models import DrawNet, create_model
-from utils import get_classes
+from models import ProteinNet, create_model
+from train import validate
 
 
-
-
-def model_predict(args, model, model_file, check=False, tta_num=2):
+def model_predict(args, model, model_file, check=False, tta_num=1):
     model.eval()
 
     preds = []
     for flip_index in range(tta_num):
         print('tta index:', flip_index)
-        test_loader = get_test_loader(batch_size=args.batch_size, img_sz=args.img_sz, dev_mode=args.dev_mode, tta_index=flip_index)
+        test_loader = get_test_loader(batch_size=args.batch_size, dev_mode=args.dev_mode)
 
         outputs = None
         with torch.no_grad():
             for i, x in enumerate(test_loader):
                 x = x.cuda()
                 output = model(x)
-                output = F.softmax(output, dim=1)
+                output = F.sigmoid(output)
                 if outputs is None:
                     outputs = output.cpu()
                 else:
@@ -38,34 +36,55 @@ def model_predict(args, model, model_file, check=False, tta_num=2):
                 if check and i == 0:
                     break
 
-        preds.append(outputs)
+        preds.append(outputs.numpy())
         #return outputs
-    results = torch.mean(torch.stack(preds), 0)
+    #results = torch.mean(torch.stack(preds), 0)
+    results = np.mean(preds, 0)
 
     parent_dir = model_file+'_out'
     if not os.path.exists(parent_dir):
         os.makedirs(parent_dir)
     np_file = os.path.join(parent_dir, 'pred.npy')
-    np.save(np_file, results.numpy())
+    np.save(np_file, results)
 
     return results
 
-def predict_top3(args):
-    model, model_file = create_model(args.backbone, args.img_sz)
+def predict(args):
+    model, model_file = create_model(args.backbone)
 
     if not os.path.exists(model_file):
         raise AssertionError('model file not exist: {}'.format(model_file))
+    _, val_loader = get_train_val_loader(args.batch_size)
 
     model.eval()
-    test_loader = get_test_loader(batch_size=args.batch_size, dev_mode=args.dev_mode, img_sz=args.img_sz)
+    
+    #_, preds = outputs.topk(3, 1, True, True)
+    _, _, th = validate(args, model, val_loader, args.batch_size)
+    print(th)
 
     outputs = model_predict(args, model, model_file)
-    _, preds = outputs.topk(3, 1, True, True)
 
-    preds = preds.numpy()
+    preds = (outputs > th).astype(np.uint8)
     print(preds.shape)
+    #pred_t = preds.max(axis=-1)
+    #save_pred(pred_t, th, args.sub_file)
     
     create_submission(args, preds, args.sub_file)
+
+def save_pred(pred, th=0.5, fname='sub/sub1.csv'):
+    pred_list = []
+    for line in pred:
+        s = ' '.join(list([str(i) for i in np.nonzero(line>th)[0]]))
+        pred_list.append(s)
+        
+    sample_df = pd.read_csv(settings.SAMPLE_SUBMISSION)
+    sample_list = list(sample_df.Id)
+    pred_dic = dict((key, value) for (key, value) 
+                in zip(learner.data.test_ds.fnames,pred_list))
+    pred_list_cor = [pred_dic[id] for id in sample_list]
+    df = pd.DataFrame({'Id':sample_list,'Predicted':pred_list_cor})
+    df.to_csv(fname, header=True, index=False)
+
 
 def ensemble_np(np_files):
     print(np_files)
@@ -81,15 +100,14 @@ def ensemble_np(np_files):
     create_submission(args, preds, args.sub_file)
 
 def create_submission(args, preds, outfile):
-    classes, _ = get_classes()
     label_names = []
     for row in preds:
-        label_names.append(' '.join([classes[i] for i in row]))
+        label_names.append(' '.join([str(i) for i in range(28) if row[i] == 1]))
 
     meta = pd.read_csv(settings.SAMPLE_SUBMISSION)
     if args.dev_mode:
         meta = meta.iloc[:len(label_names)]  # for dev mode
-    meta['word'] = label_names
+    meta['Predicted'] = label_names
     meta.to_csv(outfile, index=False)
 
 def save_raw_csv(np_file):
@@ -124,12 +142,11 @@ def show_test_img(key_id):
 if __name__ == '__main__':
     
     parser = argparse.ArgumentParser(description='Quick Draw')
-    parser.add_argument('--backbone', default='resnet18', type=str, help='backbone')
-    parser.add_argument('--batch_size', default=512, type=int, help='batch_size')
+    parser.add_argument('--backbone', default='resnet50', type=str, help='backbone')
+    parser.add_argument('--batch_size', default=16, type=int, help='batch_size')
     parser.add_argument('--val', action='store_true')
     parser.add_argument('--dev_mode', action='store_true')
     parser.add_argument('--sub_file', default='sub/sub1.csv', help='submission file')
-    parser.add_argument('--img_sz', default=256, type=int, help='alway save')
     parser.add_argument('--ensemble_np', default=None, type=str, help='np files')
     parser.add_argument('--save_raw_csv', default=None, type=str, help='np files')
     parser.add_argument('--sub_from_csv', default=None, type=str, help='np files')
@@ -145,4 +162,4 @@ if __name__ == '__main__':
     elif args.sub_from_csv:
         create_sub_from_raw_csv(args, args.sub_from_csv)
     else:
-        predict_top3(args)
+        predict(args)

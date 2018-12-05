@@ -7,20 +7,21 @@ import torch.optim as optim
 from net.resnet import resnet18, resnet34, resnet50, resnet101, resnet152
 from net.senet import se_resnext50_32x4d, se_resnet50, senet154, se_resnet152, se_resnext101_32x4d
 from net.densenet import densenet121, densenet161, densenet169, densenet201
-from net.nasnet_mobile import nasnetmobile
 from net.nasnet import nasnetalarge
-from net.MobileNetV2 import mobilenet
 import settings
 
 
-class DrawNet(nn.Module):
-    def __init__(self, backbone_name, num_classes=340, pretrained=True):
-        super(DrawNet, self).__init__()
+class ProteinNet(nn.Module):
+    def __init__(self, backbone_name, num_classes=28, pretrained=True):
+        super(ProteinNet, self).__init__()
         print('num_classes:', num_classes)
         if backbone_name in ['se_resnext50_32x4d', 'se_resnext101_32x4d', 'se_resnet50', 'senet154', 'se_resnet152', 'nasnetmobile', 'mobilenet', 'nasnetalarge']:
             self.backbone = eval(backbone_name)()
         elif backbone_name in ['resnet34', 'resnet18', 'resnet50', 'resnet101', 'resnet152', 'densenet121', 'densenet161', 'densenet169', 'densenet201']:
             self.backbone = eval(backbone_name)(pretrained=pretrained)
+            w = self.backbone.conv1.weight
+            self.backbone.conv1 = nn.Conv2d(4, 64,kernel_size=7, stride=2, padding=3, bias=False)
+            self.backbone.conv1.weight = torch.nn.Parameter(torch.cat((w, w[:, 2, :, :].unsqueeze(1)), dim=1))
         else:
             raise ValueError('unsupported backbone name {}'.format(backbone_name))
         #self.backbone.last_linear = nn.Linear(2048, 7272) # for model convert
@@ -46,7 +47,7 @@ class DrawNet(nn.Module):
 
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
         self.logit = nn.Linear(ftr_num, num_classes)
-        self.name = 'DrawNet_' + backbone_name
+        self.name = 'ProteinNet_' + backbone_name
     
     def logits(self, x):
         x = self.avg_pool(x)
@@ -71,9 +72,9 @@ class DrawNet(nn.Module):
         return [param_group1]
 
 
-def create_model(backbone, img_sz):
-    model = DrawNet(backbone_name=backbone)
-    model_file = os.path.join(settings.MODEL_DIR, model.name, 'best_{}.pth'.format(img_sz))
+def create_model(backbone):
+    model = ProteinNet(backbone_name=backbone)
+    model_file = os.path.join(settings.MODEL_DIR, model.name, 'best.pth')
 
     parent_dir = os.path.dirname(model_file)
     if not os.path.exists(parent_dir):
@@ -89,8 +90,8 @@ def create_model(backbone, img_sz):
     return model, model_file
 
 def test():
-    model, _ = create_model('resnet18', 128)
-    x = torch.randn(4, 3,256,256).cuda()
+    model, _ = create_model('resnet34')
+    x = torch.randn(4, 4, 512, 512).cuda()
     y = model(x)
     print(y.size())
 
