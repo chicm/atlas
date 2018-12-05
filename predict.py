@@ -66,25 +66,8 @@ def predict(args):
 
     preds = (outputs > th).astype(np.uint8)
     print(preds.shape)
-    #pred_t = preds.max(axis=-1)
-    #save_pred(pred_t, th, args.sub_file)
     
     create_submission(args, preds, args.sub_file)
-
-def save_pred(pred, th=0.5, fname='sub/sub1.csv'):
-    pred_list = []
-    for line in pred:
-        s = ' '.join(list([str(i) for i in np.nonzero(line>th)[0]]))
-        pred_list.append(s)
-        
-    sample_df = pd.read_csv(settings.SAMPLE_SUBMISSION)
-    sample_list = list(sample_df.Id)
-    pred_dic = dict((key, value) for (key, value) 
-                in zip(learner.data.test_ds.fnames,pred_list))
-    pred_list_cor = [pred_dic[id] for id in sample_list]
-    df = pd.DataFrame({'Id':sample_list,'Predicted':pred_list_cor})
-    df.to_csv(fname, header=True, index=False)
-
 
 def ensemble_np(np_files):
     print(np_files)
