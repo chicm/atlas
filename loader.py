@@ -109,7 +109,7 @@ class ImageDataset(data.Dataset):
         
         #Image.fromarray(img[:,:,0:3], mode='RGB').show()
         img = img.transpose((2,0,1))
-        img = img /255
+        img = (img /255).astype(np.float32)
 
         if self.img_transform is not None:
             img = self.img_transform(img)

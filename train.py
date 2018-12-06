@@ -67,7 +67,7 @@ def train(args):
 
     print('epoch | itr |   lr    |   %             |  loss  |  avg   |  loss  | optim f1 |  best f1  |  thresh  |  time | save |')
 
-    best_val_loss, best_val_score, th = validate(args, model, val_loader, args.batch_size)
+    best_val_loss, best_val_score, th = validate(args, model, val_loader, args.batch_size*4)
 
     print('val   |     |         |                 |        |        | {:.4f} | {:.4f}   |  {:.4f}   |   {:s} |       |'.format(
         best_val_loss, best_val_score, best_val_score, ''))
@@ -104,7 +104,7 @@ def train(args):
                     loss.item(), train_loss/(batch_idx+1)), end='')
 
             if iteration % args.iter_save == 0:
-                val_loss, val_score, th = validate(args, model, val_loader, args.batch_size)
+                val_loss, val_score, th = validate(args, model, val_loader, args.batch_size*4)
                 model.train()
                 _save_ckp = ''
 
