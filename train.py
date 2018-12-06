@@ -70,7 +70,7 @@ def train(args):
     best_val_loss, best_val_score, th = validate(args, model, val_loader, args.batch_size)
 
     print('val   |     |         |                 |        |        | {:.4f} | {:.4f}   |  {:.4f}   |   {:s} |       |'.format(
-        best_val_loss, best_val_score, best_val_score, th_to_str(th)))
+        best_val_loss, best_val_score, best_val_score, ''))
 
     if args.val:
         return
@@ -122,11 +122,11 @@ def train(args):
                 current_lr = get_lrs(optimizer) 
 
                 print(' {:.4f} | {:.4f}   |  {:.4f}   |  {:s} | {:.1f}  | {:4s} |'.format(
-                    val_loss, val_score, best_val_score, th_to_str(th), (time.time() - bg) / 60, _save_ckp))
+                    val_loss, val_score, best_val_score, '', (time.time() - bg) / 60, _save_ckp))
                 bg = time.time()
 
 def sigmoid_np(x):
-    return 1.0/(1.0 + np.exp(-x))
+    return 1.0/(1.0 + np.exp(np.clip(-x, -100, 100)))
 
 def F1_soft(preds,targs,th=0.5,d=50.0):
     preds = sigmoid_np(d*(preds - th))
