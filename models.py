@@ -17,6 +17,10 @@ class ProteinNet(nn.Module):
         print('num_classes:', num_classes)
         if backbone_name in ['se_resnext50_32x4d', 'se_resnext101_32x4d', 'se_resnet50', 'senet154', 'se_resnet152', 'nasnetmobile', 'mobilenet', 'nasnetalarge']:
             self.backbone = eval(backbone_name)()
+            #print(self.backbone.layer0.conv1)
+            w = self.backbone.layer0.conv1.weight
+            self.backbone.layer0.conv1 = nn.Conv2d(4, 64,kernel_size=7, stride=2, padding=3, bias=False)
+            self.backbone.layer0.conv1.weight = torch.nn.Parameter(torch.cat((w, w[:, 2, :, :].unsqueeze(1)), dim=1))
         elif backbone_name in ['resnet34', 'resnet18', 'resnet50', 'resnet101', 'resnet152', 'densenet121', 'densenet161', 'densenet169', 'densenet201']:
             self.backbone = eval(backbone_name)(pretrained=pretrained)
             w = self.backbone.conv1.weight
@@ -90,7 +94,8 @@ def create_model(backbone):
     return model, model_file
 
 def test():
-    model, _ = create_model('resnet34')
+    model, _ = create_model('se_resnet50')
+    print(model.backbone.layer0)
     x = torch.randn(4, 4, 512, 512).cuda()
     y = model(x)
     print(y.size())

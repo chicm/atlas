@@ -130,6 +130,6 @@ def update_sub(submission_df):
     submission_df.loc[submission_df['Id']=='7fcba676-bad9-11e8-b2b9-ac1f6b6435d0', 'Predicted'] = '15 25'
 
 if __name__ == '__main__':
-    df = pd.read_csv('sub/sub3.csv')
+    df = pd.read_csv('sub/sub1_1206.csv')
     update_sub(df)
-    df.to_csv('sub/sub3_ol.csv', index=False)
+    df.to_csv('sub/sub1_1206_update.csv', index=False)

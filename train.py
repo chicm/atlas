@@ -33,7 +33,7 @@ class FocalLoss(nn.Module):
         
         return loss.sum(dim=1).mean()
 
-#focal_loss = FocalLoss()
+focal_loss = FocalLoss()
 
 def acc(preds,targs,th=0.0):
     preds = (preds > th).int()
@@ -41,9 +41,9 @@ def acc(preds,targs,th=0.0):
     return (preds==targs).float().mean()
 
 def criterion(outputs, targets):
-    return F.binary_cross_entropy_with_logits(outputs, targets)
+    #return F.binary_cross_entropy_with_logits(outputs, targets)
 
-    #return focal_loss(outputs, targets)
+    return focal_loss(outputs, targets)
 
 
 def train(args):
@@ -59,7 +59,7 @@ def train(args):
     else:
         lr_scheduler = CosineAnnealingLR(optimizer, args.t_max, eta_min=args.min_lr)
 
-    _, val_loader = get_train_val_loader(batch_size=args.batch_size)
+    _, val_loader = get_train_val_loader(batch_size=args.batch_size, val_num=args.val_num)
 
     model.train()
 
@@ -201,6 +201,7 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', default=16, type=int, help='batch size')
     parser.add_argument('--backbone', default='resnet50', type=str, help='backbone')
     parser.add_argument('--epochs', default=1000, type=int, help='epochs')
+    parser.add_argument('--val_num', default=3000, type=int, help='epochs')
     parser.add_argument('--iter_save', default=200, type=int, help='epochs')
     parser.add_argument('--val',action='store_true', help='val only')
     parser.add_argument('--pos_weight', default=20, type=int, help='end index of classes')
