@@ -129,7 +129,16 @@ def update_sub(submission_df):
     submission_df.loc[submission_df['Id']=='89975d50-bad7-11e8-b2b9-ac1f6b6435d0', 'Predicted'] = '15 25'
     submission_df.loc[submission_df['Id']=='7fcba676-bad9-11e8-b2b9-ac1f6b6435d0', 'Predicted'] = '15 25'
 
+def update_with_test_matches(df):
+    test_matches_df = pd.read_csv('test_matches.csv')
+    print(test_matches_df.head())
+    for row in test_matches_df[['Test', 'Target']].values:
+        #print(row)
+        df.loc[df['Id']==row[0], 'Predicted'] = row[1]
+
 if __name__ == '__main__':
-    df = pd.read_csv('sub/sub1_1206.csv')
+    df = pd.read_csv('sub/se50_update.csv')
     update_sub(df)
-    df.to_csv('sub/sub1_1206_update.csv', index=False)
+    #df.to_csv('sub/sub1_1206_update.csv', index=False)
+    update_with_test_matches(df)
+    df.to_csv('sub/se50_update2.csv', index=False)
