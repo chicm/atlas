@@ -10,19 +10,91 @@ from PIL import Image
 import random
 import settings
 
+from albumentations import (
+    HorizontalFlip, IAAPerspective, ShiftScaleRotate, CLAHE, RandomRotate90,
+    Transpose, ShiftScaleRotate, Blur, OpticalDistortion, GridDistortion, HueSaturationValue,
+    IAAAdditiveGaussianNoise, GaussNoise, MotionBlur, MedianBlur, IAAPiecewiseAffine,
+    IAASharpen, IAAEmboss, RandomContrast, RandomBrightness, Flip, OneOf, Compose, RandomGamma, ElasticTransform, ChannelShuffle,RGBShift, Rotate
+)
+
+def strong_aug(p=1):
+    return Compose([
+        RandomRotate90(),
+        Flip(),
+        #Transpose(),
+        OneOf([
+            IAAAdditiveGaussianNoise(),
+            GaussNoise(),
+        ], p=0.2),
+        OneOf([
+            MotionBlur(p=.2),
+            MedianBlur(blur_limit=3, p=.1),
+            Blur(blur_limit=3, p=.1),
+        ], p=0.2),
+        ShiftScaleRotate(shift_limit=0.0625, scale_limit=0.2, rotate_limit=45, p=.2),
+        OneOf([
+            OpticalDistortion(p=0.3),
+            GridDistortion(p=.1),
+            IAAPiecewiseAffine(p=0.3),
+        ], p=0.2),
+        OneOf([
+            #CLAHE(clip_limit=2),
+            IAASharpen(),
+            IAAEmboss(),
+            RandomContrast(),
+            RandomBrightness(),
+        ], p=0.3),
+        #HueSaturationValue(p=0.3),
+    ], p=p)
+
+def augment_inclusive(p=.9):
+    return Compose([
+        RandomRotate90(),
+        Flip(),
+        #Transpose(),
+        OneOf([
+                CLAHE(clip_limit=2),
+                IAASharpen(),
+                IAAEmboss(),
+                RandomContrast(),
+                RandomBrightness(),
+            ], p=0.3),
+        #
+        #HorizontalFlip(.5),
+        ShiftScaleRotate(shift_limit=0.075, scale_limit=0.15, rotate_limit=20, p=.75 ),
+        Blur(blur_limit=3, p=.33),
+        OpticalDistortion(p=.33),
+        GridDistortion(p=.33),
+        HueSaturationValue(p=.33)
+    ], p=p)
+
+def augment(aug, image):
+    return aug(image=image)['image']
+
+def augment_4chan(aug, image):
+    #print(image.shape)
+    image[:,:,0:3]=aug(image=image[:,:,0:3])['image']
+    image[:,:,3]=aug(image=image[:,:,1:4])['image'][:,:,2]
+    #image[0:3,:,:]=aug(image=image[0:3,:,:])['image']
+    #print('>>>', image.shape)
+    #print(aug(image=image[1:4,:,:])['image'][2,:,:].shape)
+    #image[3,:,:]=aug(image=image[1:4,:,:])['image'][2,:,:]
+    return image
 
 def open_rgby(img_dir, id): #a function that reads RGBY image
     colors = ['red','green','blue','yellow']
-    flags = cv2.IMREAD_GRAYSCALE
-    img = [cv2.imread(os.path.join(img_dir, id+'_'+color+'.png'), flags).astype(np.float32)/255
-           for color in colors]
+    #flags = cv2.IMREAD_GRAYSCALE
+    #img = [cv2.imread(os.path.join(img_dir, id+'_'+color+'.png'), flags).astype(np.float32)/255
+    #       for color in colors]
+    img = [np.array(Image.open(os.path.join(img_dir, id+'_'+color+'.png')).convert('L')) for color in colors]
     img = np.stack(img, axis=-1)
-    img = img.transpose((2,0,1))
+    #img = img.transpose((2,0,1))
     return img
 
 
 class ImageDataset(data.Dataset):
-    def __init__(self, img_dir, img_ids, labels=None, img_transform=None):
+    def __init__(self, train_mode, img_dir, img_ids, labels=None, img_transform=None):
+        self.train_mode = train_mode
         self.img_dir = img_dir
         self.img_ids = img_ids
         self.labels = labels
@@ -30,6 +102,14 @@ class ImageDataset(data.Dataset):
         
     def __getitem__(self, index):
         img = open_rgby(self.img_dir, self.img_ids[index])
+        #Image.fromarray(img[:,:,0:3], mode='RGB').show()
+        if self.train_mode:
+            aug = augment_inclusive()
+            img = augment_4chan(aug, img)
+        
+        #Image.fromarray(img[:,:,0:3], mode='RGB').show()
+        img = img.transpose((2,0,1))
+        img = img /255
 
         if self.img_transform is not None:
             img = self.img_transform(img)
@@ -63,14 +143,14 @@ def get_train_val_loader(batch_size=4, dev_mode=False, val_num=2000):
     img_ids_train = df_train['Id'].values.tolist()
     labels_train = df_train['Target'].values.tolist()
 
-    dset_train = ImageDataset(img_dir, img_ids_train, labels_train, img_transform=None)
+    dset_train = ImageDataset(True, img_dir, img_ids_train, labels_train, img_transform=None)
     dloader_train = data.DataLoader(dset_train, batch_size=batch_size, shuffle=True, num_workers=4, drop_last=True)
     dloader_train.num = len(dset_train)
 
     img_ids_val = df_val['Id'].values.tolist()
     labels_val = df_val['Target'].values.tolist()
 
-    dset_val = ImageDataset(img_dir, img_ids_val, labels_val, img_transform=None)
+    dset_val = ImageDataset(False, img_dir, img_ids_val, labels_val, img_transform=None)
     dloader_val = data.DataLoader(dset_val, batch_size=batch_size, shuffle=False, num_workers=4, drop_last=False)
     dloader_val.num = len(dset_val)
 
@@ -84,19 +164,17 @@ def get_test_loader(batch_size=4, dev_mode=False):
     img_dir = settings.TEST_IMG_DIR
     img_ids = df['Id'].values.tolist()
 
-    dset = ImageDataset(img_dir, img_ids, None, img_transform=None)
+    dset = ImageDataset(False, img_dir, img_ids, None, img_transform=None)
     dloader = data.DataLoader(dset, batch_size=batch_size, shuffle=False, num_workers=4, drop_last=False)
     dloader.num = len(dset)
     return dloader
 
 def test_train_loader():
-    loader, _ = get_train_val_loader(batch_size=10, dev_mode=True)
+    loader, _ = get_train_val_loader(batch_size=1, dev_mode=True)
     for i, (img, target) in enumerate(loader):
         print(img.size(), target.size())
         print(img)
-        #print(img)
-        if i % 1000 == 0:
-            print(i)
+        break
 
 def test_val_loader():
     loader = get_val_loader()
@@ -111,6 +189,6 @@ def test_test_loader():
         print(img.size())
 
 if __name__ == '__main__':
-    #test_train_loader()
+    test_train_loader()
     #test_val_loader()
-    test_test_loader()
+    #test_test_loader()
