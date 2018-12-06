@@ -11,7 +11,7 @@ import random
 import settings
 
 from albumentations import (
-    HorizontalFlip, IAAPerspective, ShiftScaleRotate, CLAHE, RandomRotate90,
+    HorizontalFlip, IAAPerspective, ShiftScaleRotate, CLAHE, RandomRotate90, RandomBrightnessContrast,
     Transpose, ShiftScaleRotate, Blur, OpticalDistortion, GridDistortion, HueSaturationValue,
     IAAAdditiveGaussianNoise, GaussNoise, MotionBlur, MedianBlur, IAAPiecewiseAffine,
     IAASharpen, IAAEmboss, RandomContrast, RandomBrightness, Flip, OneOf, Compose, RandomGamma, ElasticTransform, ChannelShuffle,RGBShift, Rotate
@@ -61,11 +61,23 @@ def augment_inclusive(p=.9):
             ], p=0.3),
         #
         #HorizontalFlip(.5),
-        ShiftScaleRotate(shift_limit=0.075, scale_limit=0.15, rotate_limit=20, p=.75 ),
+        ShiftScaleRotate(shift_limit=0.0625, scale_limit=0.1, rotate_limit=20, p=.75 ),
         Blur(blur_limit=3, p=.33),
         OpticalDistortion(p=.33),
         GridDistortion(p=.33),
         HueSaturationValue(p=.33)
+    ], p=p)
+
+def weak_aug(p=1.):
+    return Compose([
+        RandomRotate90(),
+        Flip(),
+        ShiftScaleRotate(shift_limit=0.0625, scale_limit=0.1, rotate_limit=10, p=.5 ),
+        RandomBrightnessContrast(p=0.33)
+        #Blur(blur_limit=3, p=.33),
+        #OpticalDistortion(p=.33),
+        #GridDistortion(p=.33),
+        #HueSaturationValue(p=.33)
     ], p=p)
 
 #def augment(aug, image):
@@ -110,7 +122,8 @@ class ImageDataset(data.Dataset):
         #Image.fromarray(img[:,:,0:3], mode='RGB').show()
         #Image.fromarray(img[:,:,3], mode='L').show()
         if self.train_mode:
-            aug = augment_inclusive()
+            #aug = augment_inclusive()
+            aug = weak_aug()
             img = augment_4chan(aug, img)
         
         #print(img.shape)
