@@ -68,13 +68,18 @@ def augment_inclusive(p=.9):
         HueSaturationValue(p=.33)
     ], p=p)
 
-def augment(aug, image):
-    return aug(image=image)['image']
+#def augment(aug, image):
+#    return aug(image=image)['image']
 
 def augment_4chan(aug, image):
     #print(image.shape)
-    image[:,:,0:3]=aug(image=image[:,:,0:3])['image']
-    image[:,:,3]=aug(image=image[:,:,1:4])['image'][:,:,2]
+    #image[:,:,0:3]=aug(image=image[:,:,0:3])['image']
+    #image[:,:,3]=aug(image=image[:,:,1:4])['image'][:,:,2]
+
+    augmented = aug(image=image[:,:,0:3], mask=image[:,:,3])
+    image[:,:,0:3] = augmented['image']
+    image[:,:,3] = augmented['mask']
+
     #image[0:3,:,:]=aug(image=image[0:3,:,:])['image']
     #print('>>>', image.shape)
     #print(aug(image=image[1:4,:,:])['image'][2,:,:].shape)
@@ -103,11 +108,15 @@ class ImageDataset(data.Dataset):
     def __getitem__(self, index):
         img = open_rgby(self.img_dir, self.img_ids[index])
         #Image.fromarray(img[:,:,0:3], mode='RGB').show()
+        #Image.fromarray(img[:,:,3], mode='L').show()
         if self.train_mode:
             aug = augment_inclusive()
             img = augment_4chan(aug, img)
         
+        #print(img.shape)
         #Image.fromarray(img[:,:,0:3], mode='RGB').show()
+        #Image.fromarray(img[:,:,3], mode='L').show()
+
         img = img.transpose((2,0,1))
         img = (img /255).astype(np.float32)
 
@@ -136,8 +145,8 @@ def get_train_val_loader(batch_size=4, dev_mode=False, val_num=2000):
     df_val = df_val.iloc[:val_num]
 
     if dev_mode:
-        df_train = df_train.iloc[:10]
-        df_val = df_val.iloc[:10]
+        df_train = df_train.iloc[3:4]
+        df_val = df_val.iloc[3:4]
 
     img_dir = settings.TRAIN_IMG_DIR
     img_ids_train = df_train['Id'].values.tolist()
@@ -173,7 +182,7 @@ def test_train_loader():
     loader, _ = get_train_val_loader(batch_size=1, dev_mode=True)
     for i, (img, target) in enumerate(loader):
         print(img.size(), target.size())
-        print(img)
+        #print(img)
         break
 
 def test_val_loader():
