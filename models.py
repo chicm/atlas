@@ -21,11 +21,16 @@ class ProteinNet(nn.Module):
             w = self.backbone.layer0.conv1.weight
             self.backbone.layer0.conv1 = nn.Conv2d(4, 64,kernel_size=7, stride=2, padding=3, bias=False)
             self.backbone.layer0.conv1.weight = torch.nn.Parameter(torch.cat((w, w[:, 2, :, :].unsqueeze(1)), dim=1))
-        elif backbone_name in ['resnet34', 'resnet18', 'resnet50', 'resnet101', 'resnet152', 'densenet121', 'densenet161', 'densenet169', 'densenet201']:
+        elif backbone_name in ['resnet34', 'resnet18', 'resnet50', 'resnet101', 'resnet152']:
             self.backbone = eval(backbone_name)(pretrained=pretrained)
             w = self.backbone.conv1.weight
             self.backbone.conv1 = nn.Conv2d(4, 64,kernel_size=7, stride=2, padding=3, bias=False)
             self.backbone.conv1.weight = torch.nn.Parameter(torch.cat((w, w[:, 2, :, :].unsqueeze(1)), dim=1))
+        elif backbone_name in ['densenet121', 'densenet161', 'densenet169', 'densenet201']:
+            self.backbone = eval(backbone_name)(pretrained=pretrained)
+            w = self.backbone.features.conv0.weight
+            self.backbone.features.conv0 = nn.Conv2d(4, 64,kernel_size=7, stride=2, padding=3, bias=False)
+            self.backbone.features.conv0.weight = torch.nn.Parameter(torch.cat((w, w[:, 2, :, :].unsqueeze(1)), dim=1))
         else:
             raise ValueError('unsupported backbone name {}'.format(backbone_name))
         #self.backbone.last_linear = nn.Linear(2048, 7272) # for model convert
@@ -94,8 +99,8 @@ def create_model(backbone):
     return model, model_file
 
 def test():
-    model, _ = create_model('se_resnet50')
-    print(model.backbone.layer0)
+    model, _ = create_model('densenet161')
+    print(model.backbone.features.conv0)
     x = torch.randn(4, 4, 512, 512).cuda()
     y = model(x)
     print(y.size())
