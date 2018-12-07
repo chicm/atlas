@@ -177,7 +177,7 @@ def get_train_val_loader(batch_size=4, dev_mode=False, val_num=3000):
     labels_val = df_val['Target'].values.tolist()
 
     dset_val = ImageDataset(False, img_dir, img_ids_val, labels_val, img_transform=None)
-    dloader_val = data.DataLoader(dset_val, batch_size=batch_size, shuffle=False, num_workers=4, drop_last=False)
+    dloader_val = data.DataLoader(dset_val, batch_size=batch_size*4, shuffle=False, num_workers=4, drop_last=False)
     dloader_val.num = len(dset_val)
 
     return dloader_train, dloader_val
