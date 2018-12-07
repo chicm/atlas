@@ -14,9 +14,16 @@ import settings
 from albumentations import (
     HorizontalFlip, IAAPerspective, ShiftScaleRotate, CLAHE, RandomRotate90, RandomBrightnessContrast,
     Transpose, ShiftScaleRotate, Blur, OpticalDistortion, GridDistortion, HueSaturationValue,
-    IAAAdditiveGaussianNoise, GaussNoise, MotionBlur, MedianBlur, IAAPiecewiseAffine,
+    IAAAdditiveGaussianNoise, GaussNoise, MotionBlur, MedianBlur, IAAPiecewiseAffine, VerticalFlip,
     IAASharpen, IAAEmboss, RandomContrast, RandomBrightness, Flip, OneOf, Compose, RandomGamma, ElasticTransform, ChannelShuffle,RGBShift, Rotate
 )
+
+class Rotate90(RandomRotate90):
+    def apply(self, img, factor=3, **params):
+        return np.ascontiguousarray(np.rot90(img, 1))
+
+    #def apply_to_bbox(self, bbox, factor=3, **params):
+    #    return F.bbox_rot90(bbox, 3, **params)
 
 def strong_aug(p=1):
     return Compose([
@@ -73,11 +80,11 @@ def weak_aug(p=1.):
     return Compose([
         RandomRotate90(),
         Flip(),
-        ShiftScaleRotate(shift_limit=0.0625, scale_limit=0.1, rotate_limit=10, p=.5 ),
-        RandomBrightnessContrast(p=0.33)
+        ShiftScaleRotate(shift_limit=0.0625, scale_limit=0.1, rotate_limit=10, p=.75 ),
+        RandomBrightnessContrast(p=0.33),
         #Blur(blur_limit=3, p=.33),
         #OpticalDistortion(p=.33),
-        #GridDistortion(p=.33),
+        #GridDistortion(p=1.33),
         #HueSaturationValue(p=.33)
     ], p=p)
 
@@ -99,6 +106,18 @@ def augment_4chan(aug, image):
     #image[3,:,:]=aug(image=image[1:4,:,:])['image'][2,:,:]
     return image
 
+def get_tta_aug(tta_index=0):
+    tta_augs = {
+        1: HorizontalFlip(always_apply=True),
+        2: VerticalFlip(always_apply=True),
+        3: Compose([HorizontalFlip(always_apply=True),VerticalFlip(always_apply=True)]),
+        4: Rotate90(),
+        5: Compose([Rotate90(), HorizontalFlip(always_apply=True)]),
+        6: Compose([VerticalFlip(always_apply=True), Rotate90()]),
+        7: Compose([HorizontalFlip(always_apply=True),VerticalFlip(always_apply=True), Rotate90()]),
+    }
+    return tta_augs[tta_index]
+
 def open_rgby(img_dir, id, suffix='.png'): #a function that reads RGBY image
     colors = ['red','green','blue','yellow']
     #flags = cv2.IMREAD_GRAYSCALE
@@ -114,13 +133,14 @@ def open_rgby(img_dir, id, suffix='.png'): #a function that reads RGBY image
 
 
 class ImageDataset(data.Dataset):
-    def __init__(self, train_mode, img_dir, img_ids, labels=None, img_transform=None, suffix='.png'):
+    def __init__(self, train_mode, img_dir, img_ids, labels=None, img_transform=None, suffix='.png', tta_index=0):
         self.train_mode = train_mode
         self.img_dir = img_dir
         self.img_ids = img_ids
         self.labels = labels
         self.img_transform = img_transform
         self.suffix = suffix
+        self.tta_index = tta_index
         
     def __getitem__(self, index):
         img = open_rgby(self.img_dir, self.img_ids[index], self.suffix)
@@ -130,6 +150,13 @@ class ImageDataset(data.Dataset):
             #aug = augment_inclusive()
             aug = weak_aug()
             img = augment_4chan(aug, img)
+        elif self.tta_index != 0:
+            print(self.tta_index)
+            aug = get_tta_aug(self.tta_index)
+            print(aug)
+            img = augment_4chan(aug, img)
+        else:
+            pass
         
         #print(img.shape)
         #Image.fromarray(img[:,:,0:3], mode='RGB').show()
@@ -201,15 +228,15 @@ def get_hpa_loader(batch_size=4, dev_mode=False):
     return dloader_train, None
 
 
-def get_test_loader(batch_size=4, dev_mode=False):
+def get_test_loader(batch_size=4, dev_mode=False, tta_index=0):
     df = pd.read_csv(settings.SAMPLE_SUBMISSION)
 
     if dev_mode:
-        df = df.iloc[:10]
+        df = df.iloc[:1]
     img_dir = settings.TEST_IMG_DIR
     img_ids = df['Id'].values.tolist()
 
-    dset = ImageDataset(False, img_dir, img_ids, None, img_transform=None)
+    dset = ImageDataset(False, img_dir, img_ids, None, img_transform=None, tta_index=tta_index)
     dloader = data.DataLoader(dset, batch_size=batch_size, shuffle=False, num_workers=4, drop_last=False)
     dloader.num = len(dset)
     return dloader
@@ -227,8 +254,8 @@ def test_val_loader():
         print(img.size(), target)
         print(torch.max(img), torch.min(img))
 
-def test_test_loader():
-    loader = get_test_loader(dev_mode=True)
+def test_test_loader(tta_index=0):
+    loader = get_test_loader(dev_mode=True, tta_index=tta_index)
     print(loader.num)
     for img in loader:
         print(img.size())
@@ -236,4 +263,4 @@ def test_test_loader():
 if __name__ == '__main__':
     test_train_loader()
     #test_val_loader()
-    #test_test_loader()
+    #test_test_loader(tta_index=3)

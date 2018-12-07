@@ -22,7 +22,7 @@ def model_predict(args, model, model_file, check=False, tta_num=1):
     preds = []
     for flip_index in range(tta_num):
         print('tta index:', flip_index)
-        test_loader = get_test_loader(batch_size=args.batch_size, dev_mode=args.dev_mode)
+        test_loader = get_test_loader(batch_size=args.batch_size, dev_mode=args.dev_mode, tta_index=flip_index)
 
         outputs = None
         with torch.no_grad():
@@ -68,7 +68,7 @@ def predict(args):
     if args.val:
         return
 
-    outputs = model_predict(args, model, model_file)
+    outputs = model_predict(args, model, model_file, tta_num=args.tta_num)
 
     preds = (outputs > th).astype(np.uint8)
     print(preds.shape)
@@ -174,6 +174,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Quick Draw')
     parser.add_argument('--backbone', default='resnet50', type=str, help='backbone')
     parser.add_argument('--batch_size', default=16, type=int, help='batch_size')
+    parser.add_argument('--tta_num', default=1, type=int, help='batch_size')
     parser.add_argument('--val', action='store_true')
     parser.add_argument('--dev_mode', action='store_true')
     parser.add_argument('--sub_file', default='sub/sub1.csv', help='submission file')
