@@ -5,6 +5,7 @@ DATA_DIR = local_settings.DATA_DIR
 
 MODEL_DIR = os.path.join(DATA_DIR, 'models')
 
+HPA_IMG_DIR = os.path.join(DATA_DIR, 'HPAv18')
 TRAIN_IMG_DIR = os.path.join(DATA_DIR, 'train')
 TEST_IMG_DIR = os.path.join(DATA_DIR, 'test')
 TRAIN_LABEL = os.path.join(DATA_DIR, 'train.csv')

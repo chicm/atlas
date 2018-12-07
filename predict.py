@@ -10,6 +10,7 @@ import torch.nn.functional as F
 import settings
 from loader import get_test_loader, get_train_val_loader
 import cv2
+import scipy.optimize as opt
 from models import ProteinNet, create_model
 from train import validate
 
@@ -68,6 +69,42 @@ def predict(args):
     print(preds.shape)
     
     create_submission(args, preds, args.sub_file)
+
+lb_prob = [
+ 0.362397820,0.043841336,0.075268817,0.059322034,0.075268817,
+ 0.075268817,0.043841336,0.075268817,0.010000000,0.010000000,
+ 0.010000000,0.043841336,0.043841336,0.014198783,0.043841336,
+ 0.010000000,0.028806584,0.014198783,0.028806584,0.059322034,
+ 0.010000000,0.126126126,0.028806584,0.075268817,0.010000000,
+ 0.222493880,0.028806584,0.010000000]
+
+def sigmoid_np(x):
+    return 1.0/(1.0 + np.exp(np.clip(-x, -100, 100)))
+
+def Count_soft(preds,th=0.5,d=50.0):
+    preds = sigmoid_np(d*(preds - th))
+    return preds.mean(axis=0)
+
+def fit_test(x,y):
+    params = 0.5*np.ones(28)
+    wd = 1e-5
+    error = lambda p: np.concatenate((Count_soft(x,p) - y,
+                                      wd*(p - 0.5)), axis=None)
+    p, success = opt.leastsq(error, params)
+    return p
+
+def find_lb_th(args, np_file):
+    print(np_file)
+    preds = np.load(np_file)
+    th_t = fit_test(preds,lb_prob)
+    th_t[th_t<0.1] = 0.1
+    print(th_t)
+
+    preds = (preds > th_t).astype(np.uint8)
+    print(preds.shape)
+
+    create_submission(args, preds, args.sub_file)
+
 
 def ensemble_np(np_files):
     print(np_files)
@@ -133,6 +170,7 @@ if __name__ == '__main__':
     parser.add_argument('--ensemble_np', default=None, type=str, help='np files')
     parser.add_argument('--save_raw_csv', default=None, type=str, help='np files')
     parser.add_argument('--sub_from_csv', default=None, type=str, help='np files')
+    parser.add_argument('--find_th', default=None, type=str, help='np files')    
     
     args = parser.parse_args()
     print(args)
@@ -144,5 +182,8 @@ if __name__ == '__main__':
         save_raw_csv(args.save_raw_csv)
     elif args.sub_from_csv:
         create_sub_from_raw_csv(args, args.sub_from_csv)
+    elif args.find_th:
+        find_lb_th(args, args.find_th)
     else:
         predict(args)
+

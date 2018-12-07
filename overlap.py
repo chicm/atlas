@@ -137,8 +137,8 @@ def update_with_test_matches(df):
         df.loc[df['Id']==row[0], 'Predicted'] = row[1]
 
 if __name__ == '__main__':
-    df = pd.read_csv('sub/res101_7132.csv')
+    df = pd.read_csv('sub/res101_tune_lb_7132.csv')
     update_sub(df)
     #df.to_csv('sub/sub1_1206_update.csv', index=False)
     update_with_test_matches(df)
-    df.to_csv('sub/res101_7132_update.csv', index=False)
+    df.to_csv('sub/res101_tune_lb_7132_update.csv', index=False)

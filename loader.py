@@ -98,27 +98,31 @@ def augment_4chan(aug, image):
     #image[3,:,:]=aug(image=image[1:4,:,:])['image'][2,:,:]
     return image
 
-def open_rgby(img_dir, id): #a function that reads RGBY image
+def open_rgby(img_dir, id, suffix='.png'): #a function that reads RGBY image
     colors = ['red','green','blue','yellow']
     #flags = cv2.IMREAD_GRAYSCALE
     #img = [cv2.imread(os.path.join(img_dir, id+'_'+color+'.png'), flags).astype(np.float32)/255
     #       for color in colors]
-    img = [np.array(Image.open(os.path.join(img_dir, id+'_'+color+'.png')).convert('L')) for color in colors]
+    if suffix == '.png':
+        img = [np.array(Image.open(os.path.join(img_dir, id+'_'+color+suffix)).convert('L')) for color in colors]
+    else:
+        img = [np.array(Image.open(os.path.join(img_dir, id+'_'+color+suffix)).convert('L').resize((512,512))) for color in colors]
     img = np.stack(img, axis=-1)
     #img = img.transpose((2,0,1))
     return img
 
 
 class ImageDataset(data.Dataset):
-    def __init__(self, train_mode, img_dir, img_ids, labels=None, img_transform=None):
+    def __init__(self, train_mode, img_dir, img_ids, labels=None, img_transform=None, suffix='.png'):
         self.train_mode = train_mode
         self.img_dir = img_dir
         self.img_ids = img_ids
         self.labels = labels
         self.img_transform = img_transform
+        self.suffix = suffix
         
     def __getitem__(self, index):
-        img = open_rgby(self.img_dir, self.img_ids[index])
+        img = open_rgby(self.img_dir, self.img_ids[index], self.suffix)
         #Image.fromarray(img[:,:,0:3], mode='RGB').show()
         #Image.fromarray(img[:,:,3], mode='L').show()
         if self.train_mode:
@@ -177,6 +181,21 @@ def get_train_val_loader(batch_size=4, dev_mode=False, val_num=3000):
     dloader_val.num = len(dset_val)
 
     return dloader_train, dloader_val
+
+def get_hpa_loader(batch_size=4, dev_mode=False):
+    df_train = pd.read_csv('HPAv18RBGY_wodpl.csv')
+    if dev_mode:
+        df_train = df_train.iloc[3:4]
+
+    img_dir = settings.HPA_IMG_DIR
+    img_ids_train = df_train['Id'].values.tolist()
+    labels_train = df_train['Target'].values.tolist()
+
+    dset_train = ImageDataset(True, img_dir, img_ids_train, labels_train, img_transform=None, suffix='.jpg')
+    dloader_train = data.DataLoader(dset_train, batch_size=batch_size, shuffle=True, num_workers=4, drop_last=True)
+    dloader_train.num = len(dset_train)
+    return dloader_train, None
+
 
 def get_test_loader(batch_size=4, dev_mode=False):
     df = pd.read_csv(settings.SAMPLE_SUBMISSION)
