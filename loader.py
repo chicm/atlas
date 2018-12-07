@@ -150,7 +150,7 @@ class ImageDataset(data.Dataset):
         return len(self.img_ids)
 
 
-def get_train_val_loader(batch_size=4, dev_mode=False, val_num=2000):
+def get_train_val_loader(batch_size=4, dev_mode=False, val_num=3000):
     df = pd.read_csv(settings.TRAIN_LABEL)
     split_index = int(df.shape[0] * 0.9)
     df_train = df.iloc[:split_index]

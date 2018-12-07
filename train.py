@@ -132,13 +132,13 @@ def F1_soft(preds,targs,th=0.5,d=50.0):
     preds = sigmoid_np(d*(preds - th))
     targs = targs.astype(np.float)
     score = 2.0*(preds*targs).sum(axis=0)/((preds+targs).sum(axis=0) + 1e-6)
-    score = np.mean(score)
-    return score
+    #score = np.mean(score)
+    return np.mean(score), score
 
 def fit_val(x,y):
     params = 0.5*np.ones(28)
     wd = 1e-5
-    error = lambda p: np.concatenate((F1_soft(x,y,p) - 1.0,
+    error = lambda p: np.concatenate((F1_soft(x,y,p)[0] - 1.0,
                                       wd*(p - 0.5)), axis=None)
     p, success = opt.leastsq(error, params)
     return p
@@ -176,7 +176,10 @@ def validate(args, model, val_loader, batch_size):
     best_th = fit_val(preds, targets)
     best_th[best_th<0.1] = 0.1
     #print(best_th)
-    optimized_score = F1_soft(preds, targets, th=best_th)
+    optimized_score, raw_score = F1_soft(preds, targets, th=best_th)
+    if args.val:
+        print(raw_score)
+        print(best_th)
     #print(optimized_score)
     #print(optimized_score)
 

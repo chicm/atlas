@@ -9,7 +9,7 @@ import settings
 colors = ['red','green','blue','yellow']
 
 v18_url = 'http://v18.proteinatlas.org/images/'
-num_works = 2
+num_works = 15
 
 IMG_DIR = os.path.join(settings.DATA_DIR, 'HPAv18', 'jpg')
 
