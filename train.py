@@ -13,6 +13,7 @@ from loader import get_train_val_loader, get_hpa_loader
 from models import ProteinNet, create_model
 import settings
 
+VAL_BATCH_MULTI=8
 
 class FocalLoss(nn.Module):
     def __init__(self, gamma=2):
@@ -59,7 +60,7 @@ def train(args):
     else:
         lr_scheduler = CosineAnnealingLR(optimizer, args.t_max, eta_min=args.min_lr)
 
-    _, val_loader = get_train_val_loader(batch_size=args.batch_size, val_num=args.val_num)
+    _, val_loader = get_train_val_loader(batch_size=args.batch_size, val_batch_size=args.batch_size*VAL_BATCH_MULTI, val_num=args.val_num)
 
     model.train()
 
@@ -67,7 +68,7 @@ def train(args):
 
     print('epoch | itr |   lr    |   %             |  loss  |  avg   |  loss  | optim f1 |  best f1  |  thresh  |  time | save |')
 
-    best_val_loss, best_val_score, th = validate(args, model, val_loader, args.batch_size)
+    best_val_loss, best_val_score, th = validate(args, model, val_loader, args.batch_size*VAL_BATCH_MULTI)
 
     print('val   |     |         |                 |        |        | {:.4f} | {:.4f}   |  {:.4f}   |   {:s} |       |'.format(
         best_val_loss, best_val_score, best_val_score, ''))
@@ -107,7 +108,7 @@ def train(args):
                     loss.item(), train_loss/(batch_idx+1)), end='')
 
             if iteration % args.iter_save == 0:
-                val_loss, val_score, th = validate(args, model, val_loader, args.batch_size)
+                val_loss, val_score, th = validate(args, model, val_loader, args.batch_size*VAL_BATCH_MULTI)
                 model.train()
                 _save_ckp = ''
 

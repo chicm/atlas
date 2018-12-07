@@ -8,6 +8,7 @@ import cv2
 import json
 from PIL import Image
 import random
+from sklearn.utils import shuffle
 import settings
 
 from albumentations import (
@@ -154,12 +155,15 @@ class ImageDataset(data.Dataset):
         return len(self.img_ids)
 
 
-def get_train_val_loader(batch_size=4, dev_mode=False, val_num=3000):
+def get_train_val_loader(batch_size=4, val_batch_size=4, dev_mode=False, val_num=3500):
     df = pd.read_csv(settings.TRAIN_LABEL)
+    df = shuffle(df, random_state=6)
+
     split_index = int(df.shape[0] * 0.9)
     df_train = df.iloc[:split_index]
     df_val = df.iloc[split_index:]
     df_val = df_val.iloc[:val_num]
+    print(df_val.shape)
 
     if dev_mode:
         df_train = df_train.iloc[3:4]
@@ -177,7 +181,7 @@ def get_train_val_loader(batch_size=4, dev_mode=False, val_num=3000):
     labels_val = df_val['Target'].values.tolist()
 
     dset_val = ImageDataset(False, img_dir, img_ids_val, labels_val, img_transform=None)
-    dloader_val = data.DataLoader(dset_val, batch_size=batch_size*4, shuffle=False, num_workers=4, drop_last=False)
+    dloader_val = data.DataLoader(dset_val, batch_size=val_batch_size, shuffle=False, num_workers=4, drop_last=False)
     dloader_val.num = len(dset_val)
 
     return dloader_train, dloader_val

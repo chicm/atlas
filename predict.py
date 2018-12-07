@@ -13,6 +13,7 @@ import cv2
 import scipy.optimize as opt
 from models import ProteinNet, create_model
 from train import validate
+from overlap import update_sub, update_with_test_matches
 
 
 def model_predict(args, model, model_file, check=False, tta_num=1):
@@ -55,13 +56,17 @@ def predict(args):
 
     if not os.path.exists(model_file):
         raise AssertionError('model file not exist: {}'.format(model_file))
-    _, val_loader = get_train_val_loader(args.batch_size)
+    _, val_loader = get_train_val_loader(batch_size=args.batch_size, val_batch_size=args.batch_size, val_num=4000)
 
     model.eval()
     
     #_, preds = outputs.topk(3, 1, True, True)
-    _, _, th = validate(args, model, val_loader, args.batch_size)
+    _, score, th = validate(args, model, val_loader, args.batch_size)
     print(th)
+    print('score:', score)
+
+    if args.val:
+        return
 
     outputs = model_predict(args, model, model_file)
 
@@ -128,6 +133,11 @@ def create_submission(args, preds, outfile):
     if args.dev_mode:
         meta = meta.iloc[:len(label_names)]  # for dev mode
     meta['Predicted'] = label_names
+
+    # use leak
+    update_sub(meta)
+    update_with_test_matches(meta)
+
     meta.to_csv(outfile, index=False)
 
 def save_raw_csv(np_file):
