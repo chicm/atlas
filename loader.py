@@ -151,9 +151,9 @@ class ImageDataset(data.Dataset):
             aug = weak_aug()
             img = augment_4chan(aug, img)
         elif self.tta_index != 0:
-            print(self.tta_index)
+            #print(self.tta_index)
             aug = get_tta_aug(self.tta_index)
-            print(aug)
+            #print(aug)
             img = augment_4chan(aug, img)
         else:
             pass
