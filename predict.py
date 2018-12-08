@@ -42,12 +42,15 @@ def model_predict(args, model, model_file, check=False, tta_num=1):
         #return outputs
     #results = torch.mean(torch.stack(preds), 0)
     results = np.mean(preds, 0)
+    results_max = np.max(preds, 0)
 
     parent_dir = model_file+'_out'
     if not os.path.exists(parent_dir):
         os.makedirs(parent_dir)
-    np_file = os.path.join(parent_dir, 'pred.npy')
+    np_file = os.path.join(parent_dir, 'pred_mean_{}.npy'.format(tta_num))
+    np_file_max = os.path.join(parent_dir, 'pred_max_{}.npy'.format(tta_num))
     np.save(np_file, results)
+    np.save(np_file_max, results_max)
 
     return results
 
@@ -77,11 +80,19 @@ def predict(args):
 
 lb_prob = [
  0.362397820,0.043841336,0.075268817,0.059322034,0.075268817,
- 0.075268817,0.043841336,0.075268817,0.010000000,0.010000000,
- 0.010000000,0.043841336,0.043841336,0.014198783,0.043841336,
- 0.010000000,0.028806584,0.014198783,0.028806584,0.059322034,
- 0.010000000,0.126126126,0.028806584,0.075268817,0.010000000,
- 0.222493880,0.028806584,0.010000000]
+ 0.075268817,0.043841336,0.075268817,0.001700000,0.001400000,
+ 0.000900000,0.043841336,0.043841336,0.014198783,0.043841336,
+ 0.000600000,0.028806584,0.014198783,0.028806584,0.059322034,
+ 0.005000000,0.126126126,0.028806584,0.075268817,0.001000000,
+ 0.222493880,0.028806584,0.000350000]
+
+train_prob = [
+    0.414682, 0.040358, 0.116536, 0.050238, 0.059797,
+    0.080877, 0.032441, 0.090821, 0.001706, 0.001448,
+    0.000901, 0.035176, 0.022142, 0.017282, 0.034307,
+    0.000676, 0.017057, 0.006758, 0.029029, 0.047696,
+    0.005536, 0.121556, 0.025811, 0.095424, 0.010363,
+    0.264804, 0.010556, 0.000354]
 
 def sigmoid_np(x):
     return 1.0/(1.0 + np.exp(np.clip(-x, -100, 100)))
@@ -101,8 +112,9 @@ def fit_test(x,y):
 def find_lb_th(args, np_file):
     print(np_file)
     preds = np.load(np_file)
-    th_t = fit_test(preds,lb_prob)
-    th_t[th_t<0.1] = 0.1
+    th_t = fit_test(preds, lb_prob)
+    th_t[th_t<0.01] = 0.01
+    th_t[th_t>0.9] = 0.9
     print(th_t)
 
     preds = (preds > th_t).astype(np.uint8)
