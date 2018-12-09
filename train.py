@@ -95,7 +95,7 @@ def train(args):
         if args.hpa:
             train_loader, _ = get_hpa_loader(batch_size=args.batch_size)
         else:
-            train_loader, _ = get_train_val_loader(batch_size=args.batch_size)
+            train_loader, _ = get_train_val_loader(batch_size=args.batch_size, balanced=args.balanced)
 
         for batch_idx, data in enumerate(train_loader):
             iteration += 1
@@ -227,6 +227,7 @@ if __name__ == '__main__':
     parser.add_argument('--init_ckp', default=None, type=str, help='init checkpoint')
     parser.add_argument('--always_save',action='store_true', help='alway save')
     parser.add_argument('--multi_gpu',action='store_true', help='use multi gpus')
+    parser.add_argument('--balanced',action='store_true', help='use balanced sampler')
     args = parser.parse_args()
 
     print(args)

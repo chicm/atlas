@@ -9,6 +9,7 @@ import json
 from PIL import Image
 import random
 from sklearn.utils import shuffle
+from weighted_sampler import get_weighted_sample
 import settings
 
 from albumentations import (
@@ -187,7 +188,7 @@ class ImageDataset(data.Dataset):
         return len(self.img_ids)
 
 
-def get_train_val_loader(batch_size=4, val_batch_size=4, dev_mode=False, val_num=3500):
+def get_train_val_loader(batch_size=4, val_batch_size=4, dev_mode=False, val_num=3500, balanced=False):
     df = pd.read_csv(settings.TRAIN_LABEL)
     df = shuffle(df, random_state=6)
 
@@ -197,13 +198,17 @@ def get_train_val_loader(batch_size=4, val_batch_size=4, dev_mode=False, val_num
     df_val = df_val.iloc[:val_num]
     print(df_val.shape)
 
-    if dev_mode:
-        df_train = df_train.iloc[3:4]
-        df_val = df_val.iloc[3:4]
-
     img_dir = settings.TRAIN_IMG_DIR
     img_ids_train = df_train['Id'].values.tolist()
     labels_train = df_train['Target'].values.tolist()
+
+    if balanced:
+        img_ids_train = get_weighted_sample(df_train, 20000)
+        labels_train = df_train.set_index('Id').loc[img_ids_train].Target.values.tolist()
+
+    if dev_mode:
+        img_ids_train = img_ids_train[3:4]
+        labels_train = labels_train[3:4]
 
     dset_train = ImageDataset(True, img_dir, img_ids_train, labels_train, img_transform=None)
     dloader_train = data.DataLoader(dset_train, batch_size=batch_size, shuffle=True, num_workers=4, drop_last=True)
@@ -211,6 +216,10 @@ def get_train_val_loader(batch_size=4, val_batch_size=4, dev_mode=False, val_num
 
     img_ids_val = df_val['Id'].values.tolist()
     labels_val = df_val['Target'].values.tolist()
+
+    if dev_mode:
+        img_ids_val = img_ids_val[3:4]
+        labels_val = labels_val[3:4]
 
     dset_val = ImageDataset(False, img_dir, img_ids_val, labels_val, img_transform=None)
     dloader_val = data.DataLoader(dset_val, batch_size=val_batch_size, shuffle=False, num_workers=4, drop_last=False)
