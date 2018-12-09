@@ -1,6 +1,8 @@
 import pandas as pd
 import numpy as np
 from sklearn.utils import shuffle
+from PIL import Image
+import cv2
 import settings
 
 def print_counts(df):
@@ -11,7 +13,27 @@ def print_counts(df):
     print(type(counts), counts)
     print([round(x, 6) for x in counts.prob.values.tolist()])
 
-if __name__ == '__main__':
+def check_hpa():
+    df1 = pd.read_csv('HPAv18RBGY_wodpl.csv')
+    df2 = pd.read_csv('HPAv18RGBY_WithoutUncertain_wodpl.csv')
+
+    print(df1.head())
+    print(df2.head())
+
+    id1 = set(df1.Id.values.tolist())
+    id2 = set(df2.Id.values.tolist())
+    print(len(id1), len(id2), len(id1-id2), len(id1)-len(id2), id1.issuperset(id2))
+
+def check_hpa_img():
+    #img = cv2.imread(r'G:\atlas\HPAv18\jpg\4155_967_E9_3_green.jpg', cv2.IMREAD_GRAYSCALE) 
+    img = np.array(Image.open(r'G:\atlas\HPAv18\jpg\4155_967_E9_3_green.jpg').convert('L'))
+    #img = cv2.imread(r'G:\atlas\train\000a6c98-bb9b-11e8-b2b9-ac1f6b6435d0_red.png')#, cv2.IMREAD_GRAYSCALE) 
+    print(img[2000:2050, :20])
+    print(img.shape)
+    print(np.max(img))
+
+
+def check_train_distribution():
     df = pd.read_csv(settings.TRAIN_LABEL)
     #print(df.head())
     print_counts(df)
@@ -23,3 +45,6 @@ if __name__ == '__main__':
     df_val = df.iloc[split_index:]
 
     #print_counts(df_val)
+if __name__ == '__main__':
+    #check_hpa()
+    check_hpa_img()

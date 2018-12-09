@@ -214,7 +214,8 @@ def get_train_val_loader(batch_size=4, val_batch_size=4, dev_mode=False, val_num
     return dloader_train, dloader_val
 
 def get_hpa_loader(batch_size=4, dev_mode=False):
-    df_train = pd.read_csv('HPAv18RBGY_wodpl.csv')
+    df_train = pd.read_csv('HPAv18RGBY_WithoutUncertain_wodpl.csv')
+    df_train = shuffle(df_train)
     if dev_mode:
         df_train = df_train.iloc[3:4]
 
