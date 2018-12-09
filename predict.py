@@ -52,31 +52,33 @@ def model_predict(args, model, model_file, check=False, tta_num=1):
     np.save(np_file, results)
     np.save(np_file_max, results_max)
 
-    return results
+    return results_max
 
 def predict(args):
     model, model_file = create_model(args.backbone)
 
     if not os.path.exists(model_file):
         raise AssertionError('model file not exist: {}'.format(model_file))
-    _, val_loader = get_train_val_loader(batch_size=args.batch_size, val_batch_size=args.batch_size, val_num=4000)
+    #_, val_loader = get_train_val_loader(batch_size=args.batch_size, val_batch_size=args.batch_size, val_num=4000)
 
     model.eval()
     
     #_, preds = outputs.topk(3, 1, True, True)
-    _, score, th = validate(args, model, val_loader, args.batch_size)
-    print(th)
-    print('score:', score)
+    #_, score, th = validate(args, model, val_loader, args.batch_size)
+    #print(th)
+    #print('score:', score)
 
-    if args.val:
-        return
+    #if args.val:
+    #    return
 
     outputs = model_predict(args, model, model_file, tta_num=args.tta_num)
 
-    preds = (outputs > th).astype(np.uint8)
-    print(preds.shape)
+    find_lb_th(args, outputs)
+
+    #preds = (outputs > th).astype(np.uint8)
+    #print(preds.shape)
     
-    create_submission(args, preds, args.sub_file)
+    #create_submission(args, preds, args.sub_file)
 
 lb_prob = [
  0.362397820,0.043841336,0.075268817,0.059322034,0.075268817,
@@ -109,9 +111,9 @@ def fit_test(x,y):
     p, success = opt.leastsq(error, params)
     return p
 
-def find_lb_th(args, np_file):
-    print(np_file)
-    preds = np.load(np_file)
+def find_lb_th(args, preds):
+    #print(np_file)
+    #preds = np.load(np_file)
     th_t = fit_test(preds, lb_prob)
     th_t[th_t<0.01] = 0.01
     th_t[th_t>0.9] = 0.9
@@ -206,7 +208,9 @@ if __name__ == '__main__':
     elif args.sub_from_csv:
         create_sub_from_raw_csv(args, args.sub_from_csv)
     elif args.find_th:
-        find_lb_th(args, args.find_th)
+        print(args.find_th)
+        preds = np.load(args.find_th)
+        find_lb_th(args, preds)
     else:
         predict(args)
 
