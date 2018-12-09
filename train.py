@@ -50,6 +50,9 @@ def criterion(outputs, targets):
 def train(args):
     model, model_file = create_model(args.backbone)
 
+    if args.multi_gpu:
+        model = nn.DataParallel(model).cuda()
+
     if args.optim == 'Adam':
         optimizer = optim.Adam(model.parameters(), weight_decay=0.0001, lr=args.lr)
     else:
@@ -116,7 +119,10 @@ def train(args):
                     best_val_score = val_score
                     best_val_loss = val_loss
 
-                    torch.save(model.state_dict(), model_file)
+                    if args.multi_gpu:
+                        torch.save(model.module.state_dict(), model_file)
+                    else:
+                        torch.save(model.state_dict(), model_file)
                     _save_ckp = '*'
                 
                 if args.lrs == 'plateau':
@@ -217,6 +223,7 @@ if __name__ == '__main__':
     parser.add_argument('--tuning_separate_th',action='store_true', help='tuning threshold')
     parser.add_argument('--init_ckp', default=None, type=str, help='init checkpoint')
     parser.add_argument('--always_save',action='store_true', help='alway save')
+    parser.add_argument('--multi_gpu',action='store_true', help='use multi gpus')
     args = parser.parse_args()
 
     print(args)
