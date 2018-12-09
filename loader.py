@@ -165,8 +165,13 @@ class ImageDataset(data.Dataset):
         img = img.transpose((2,0,1))
         img = (img /255).astype(np.float32)
 
-        if self.img_transform is not None:
-            img = self.img_transform(img)
+        #normalize
+        mean = [0.0804, 0.0526, 0.0548, 0.0827]
+        std = [0.1496, 0.1122, 0.1560, 0.1497]
+        img[0, :,:,] = (img[0, :,:,] - mean[0]) / std[0]
+        img[1, :,:,] = (img[1, :,:,] - mean[1]) / std[1]
+        img[2, :,:,] = (img[2, :,:,] - mean[2]) / std[2]
+        img[3, :,:,] = (img[3, :,:,] - mean[3]) / std[3]
 
         if self.labels is None:
             return img
@@ -245,8 +250,8 @@ def get_test_loader(batch_size=4, dev_mode=False, tta_index=0):
 def test_train_loader():
     loader, _ = get_train_val_loader(batch_size=1, dev_mode=True)
     for i, (img, target) in enumerate(loader):
-        print(img.size(), target.size())
-        #print(img)
+        print(img.size(), target.size(), torch.max(img))
+        print(img)
         break
 
 def test_val_loader():
