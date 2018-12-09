@@ -68,13 +68,16 @@ def train(args):
     model.train()
 
     iteration = 0
+    best_val_score = 0.
+    best_val_loss = 10000.
 
     print('epoch | itr |   lr    |   %             |  loss  |  avg   |  loss  | optim f1 |  best f1  |  thresh  |  time | save |')
 
-    best_val_loss, best_val_score, th = validate(args, model, val_loader, args.batch_size*VAL_BATCH_MULTI)
+    if not args.no_first_val:
+        best_val_loss, best_val_score, th = validate(args, model, val_loader, args.batch_size*VAL_BATCH_MULTI)
 
-    print('val   |     |         |                 |        |        | {:.4f} | {:.4f}   |  {:.4f}   |   {:s} |       |'.format(
-        best_val_loss, best_val_score, best_val_score, ''))
+        print('val   |     |         |                 |        |        | {:.4f} | {:.4f}   |  {:.4f}   |   {:s} |       |'.format(
+            best_val_loss, best_val_score, best_val_score, ''))
 
     if args.val:
         return
@@ -220,7 +223,7 @@ if __name__ == '__main__':
     parser.add_argument('--hpa',action='store_true', help='val only')
     parser.add_argument('--pos_weight', default=20, type=int, help='end index of classes')
     parser.add_argument('--tuning_th',action='store_true', help='tuning threshold')
-    parser.add_argument('--tuning_separate_th',action='store_true', help='tuning threshold')
+    parser.add_argument('--no_first_val',action='store_true', help='tuning threshold')
     parser.add_argument('--init_ckp', default=None, type=str, help='init checkpoint')
     parser.add_argument('--always_save',action='store_true', help='alway save')
     parser.add_argument('--multi_gpu',action='store_true', help='use multi gpus')
