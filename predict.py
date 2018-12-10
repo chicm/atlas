@@ -125,18 +125,20 @@ def find_lb_th(args, preds):
     create_submission(args, preds, args.sub_file)
 
 
-def ensemble_np(np_files):
+def ensemble_np(args, np_files):
     print(np_files)
     outputs_all = []
     for np_file in np_files:
         outputs_all.append(np.load(np_file))
-    outputs = np.mean(outputs_all, 0)
+    outputs = np.max(outputs_all, 0)
     print(outputs.shape)
-    outputs = torch.from_numpy(outputs)
-    _, preds = outputs.topk(3, 1, True, True)
-    preds = preds.numpy()
+    #outputs = torch.from_numpy(outputs)
+    #_, preds = outputs.topk(3, 1, True, True)
+    #preds = preds.numpy()
 
-    create_submission(args, preds, args.sub_file)
+    #create_submission(args, preds, args.sub_file)
+   
+    find_lb_th(args, outputs)
 
 def create_submission(args, preds, outfile):
     label_names = []
@@ -202,7 +204,7 @@ if __name__ == '__main__':
 
     if args.ensemble_np:
         np_files = args.ensemble_np.split(',')
-        ensemble_np(np_files)
+        ensemble_np(args, np_files)
     elif args.save_raw_csv:
         save_raw_csv(args.save_raw_csv)
     elif args.sub_from_csv:

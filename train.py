@@ -153,7 +153,7 @@ def fit_val(x,y):
     wd = 1e-5
     error = lambda p: np.concatenate((F1_soft(x,y,p)[0] - 1.0,
                                       wd*(p - 0.5)), axis=None)
-    p, success = opt.leastsq(error, params)
+    p, success = opt.leastsq(error, params, maxfev=28000)
     return p
 
 def th_to_str(th):
