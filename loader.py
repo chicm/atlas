@@ -119,32 +119,35 @@ def get_tta_aug(tta_index=0):
     }
     return tta_augs[tta_index]
 
-def open_rgby(img_dir, id, suffix='.png'): #a function that reads RGBY image
+def open_rgby(img_dir, id, suffix): #a function that reads RGBY image
     colors = ['red','green','blue','yellow']
     #flags = cv2.IMREAD_GRAYSCALE
     #img = [cv2.imread(os.path.join(img_dir, id+'_'+color+'.png'), flags).astype(np.float32)/255
     #       for color in colors]
-    if suffix == '.png':
-        img = [np.array(Image.open(os.path.join(img_dir, id+'_'+color+suffix)).convert('L')) for color in colors]
+    if suffix == 'png':
+        img = [np.array(Image.open(os.path.join(img_dir, id+'_'+color+'.'+suffix)).convert('L')) for color in colors]
     else:
-        img = [np.array(Image.open(os.path.join(img_dir, id+'_'+color+suffix)).convert('L').resize((512,512))) for color in colors]
+        img = [np.array(Image.open(os.path.join(img_dir, id+'_'+color+'.'+suffix)).convert('L').resize((512,512))) for color in colors]
     img = np.stack(img, axis=-1)
     #img = img.transpose((2,0,1))
     return img
 
 
 class ImageDataset(data.Dataset):
-    def __init__(self, train_mode, img_dir, img_ids, labels=None, img_transform=None, suffix='.png', tta_index=0):
+    def __init__(self, train_mode, img_dir, img_ids, labels=None, suffix=None, tta_index=0, hpa_img_dir=settings.HPA_IMG_DIR):
         self.train_mode = train_mode
         self.img_dir = img_dir
         self.img_ids = img_ids
         self.labels = labels
-        self.img_transform = img_transform
         self.suffix = suffix
         self.tta_index = tta_index
+        self.hpa_img_dir = hpa_img_dir
         
     def __getitem__(self, index):
-        img = open_rgby(self.img_dir, self.img_ids[index], self.suffix)
+        if self.suffix[index] == 'png':
+            img = open_rgby(self.img_dir, self.img_ids[index], self.suffix[index])
+        else:
+            img = open_rgby(self.hpa_img_dir, self.img_ids[index], self.suffix[index])
         #Image.fromarray(img[:,:,0:3], mode='RGB').show()
         #Image.fromarray(img[:,:,3], mode='L').show()
         if self.train_mode:
@@ -188,9 +191,10 @@ class ImageDataset(data.Dataset):
         return len(self.img_ids)
 
 
-def get_train_val_loader(batch_size=4, val_batch_size=4, dev_mode=False, val_num=3500, balanced=False):
+def get_train_val_loader(batch_size=4, val_batch_size=4, dev_mode=False, val_num=3500, balanced=False, hpa=0):
     df = pd.read_csv(settings.TRAIN_LABEL)
     df = shuffle(df, random_state=6)
+    df['suffix'] = 'png'
 
     split_index = int(df.shape[0] * 0.9)
     df_train = df.iloc[:split_index]
@@ -198,9 +202,16 @@ def get_train_val_loader(batch_size=4, val_batch_size=4, dev_mode=False, val_num
     df_val = df_val.iloc[:val_num]
     print(df_val.shape)
 
+    if hpa > 0:
+        df_hpa = get_hpa_train_df(hpa)
+        df_train = pd.concat([df_train, df_hpa])
+        df_train = shuffle(df_train)
+        print(df_train.head())
+
     img_dir = settings.TRAIN_IMG_DIR
     img_ids_train = df_train['Id'].values.tolist()
     labels_train = df_train['Target'].values.tolist()
+    suffix = df_train['suffix'].values.tolist()
 
     if balanced:
         img_ids_train = get_weighted_sample(df_train, 20000)
@@ -209,24 +220,37 @@ def get_train_val_loader(batch_size=4, val_batch_size=4, dev_mode=False, val_num
     if dev_mode:
         img_ids_train = img_ids_train[4:5]
         labels_train = labels_train[4:5]
+        suffix = suffix[4:5]
 
-    dset_train = ImageDataset(True, img_dir, img_ids_train, labels_train, img_transform=None)
+    dset_train = ImageDataset(True, img_dir, img_ids_train, labels_train, suffix, hpa_img_dir=settings.HPA_IMG_DIR)
     dloader_train = data.DataLoader(dset_train, batch_size=batch_size, shuffle=True, num_workers=4, drop_last=True)
     dloader_train.num = len(dset_train)
 
     img_ids_val = df_val['Id'].values.tolist()
     labels_val = df_val['Target'].values.tolist()
+    suffix_val = df_val['suffix'].values.tolist()
 
     if dev_mode:
         img_ids_val = img_ids_val[3:4]
         labels_val = labels_val[3:4]
+        suffix_val = suffix_val[3:4]
 
-    dset_val = ImageDataset(False, img_dir, img_ids_val, labels_val, img_transform=None)
+    dset_val = ImageDataset(False, img_dir, img_ids_val, labels_val, suffix_val)
     dloader_val = data.DataLoader(dset_val, batch_size=val_batch_size, shuffle=False, num_workers=4, drop_last=False)
     dloader_val.num = len(dset_val)
 
     return dloader_train, dloader_val
 
+def get_hpa_train_df(train_num):
+    df = pd.read_csv('HPAv18RGBY_WithoutUncertain_wodpl.csv')
+    df = shuffle(df, random_state=1234)
+    df['suffix'] = 'jpg'
+    split_index = int(df.shape[0] * 0.9)
+    df_train = df.iloc[:split_index]
+    df_train = shuffle(df_train)
+
+    return df_train.iloc[:train_num]
+'''
 def get_hpa_loader(batch_size=4, dev_mode=False):
     df_train = pd.read_csv('HPAv18RGBY_WithoutUncertain_wodpl.csv')
     df_train = shuffle(df_train)
@@ -241,23 +265,24 @@ def get_hpa_loader(batch_size=4, dev_mode=False):
     dloader_train = data.DataLoader(dset_train, batch_size=batch_size, shuffle=True, num_workers=4, drop_last=True)
     dloader_train.num = len(dset_train)
     return dloader_train, None
-
+'''
 
 def get_test_loader(batch_size=4, dev_mode=False, tta_index=0):
     df = pd.read_csv(settings.SAMPLE_SUBMISSION)
+    df['suffix'] = 'png'
 
     if dev_mode:
         df = df.iloc[:1]
     img_dir = settings.TEST_IMG_DIR
     img_ids = df['Id'].values.tolist()
 
-    dset = ImageDataset(False, img_dir, img_ids, None, img_transform=None, tta_index=tta_index)
+    dset = ImageDataset(False, img_dir, img_ids, None, df['suffix'].values.tolist(), tta_index=tta_index)
     dloader = data.DataLoader(dset, batch_size=batch_size, shuffle=False, num_workers=4, drop_last=False)
     dloader.num = len(dset)
     return dloader
 
 def test_train_loader():
-    loader, _ = get_train_val_loader(batch_size=1, dev_mode=True)
+    loader, _ = get_train_val_loader(batch_size=1, dev_mode=True, hpa=10000)
     for i, (img, target) in enumerate(loader):
         print(img.size(), target.size(), torch.max(img))
         print(img)
