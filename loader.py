@@ -206,7 +206,7 @@ def get_train_val_loader(batch_size=4, val_batch_size=4, dev_mode=False, val_num
         df_hpa = get_hpa_train_df(hpa)
         df_train = pd.concat([df_train, df_hpa])
         df_train = shuffle(df_train)
-        print(df_train.head())
+        #print(df_train.head())
 
     img_dir = settings.TRAIN_IMG_DIR
     img_ids_train = df_train['Id'].values.tolist()
@@ -282,10 +282,10 @@ def get_test_loader(batch_size=4, dev_mode=False, tta_index=0):
     return dloader
 
 def test_train_loader():
-    loader, _ = get_train_val_loader(batch_size=1, dev_mode=True, hpa=10000)
+    loader, _ = get_train_val_loader(batch_size=1, dev_mode=True, hpa=20000)
     for i, (img, target) in enumerate(loader):
         print(img.size(), target.size(), torch.max(img))
-        print(img)
+        #print(img)
         break
 
 def test_val_loader():

@@ -9,7 +9,7 @@ import torch.optim as optim
 from torch.optim.lr_scheduler import ExponentialLR, CosineAnnealingLR, ReduceLROnPlateau
 import scipy.optimize as opt
 import numpy as np
-from loader import get_train_val_loader, get_hpa_loader
+from loader import get_train_val_loader
 from models import ProteinNet, create_model
 import settings
 
@@ -99,10 +99,7 @@ def train(args):
     current_lr = get_lrs(optimizer) 
     for epoch in range(args.epochs):
         train_loss = 0
-        if args.hpa:
-            train_loader, _ = get_hpa_loader(batch_size=args.batch_size)
-        else:
-            train_loader, _ = get_train_val_loader(batch_size=args.batch_size, balanced=args.balanced)
+        train_loader, _ = get_train_val_loader(batch_size=args.batch_size, balanced=args.balanced, hpa=args.hpa)
 
         for batch_idx, data in enumerate(train_loader):
             iteration += 1
@@ -230,7 +227,7 @@ if __name__ == '__main__':
     parser.add_argument('--val_num', default=3000, type=int, help='epochs')
     parser.add_argument('--iter_save', default=200, type=int, help='epochs')
     parser.add_argument('--val',action='store_true', help='val only')
-    parser.add_argument('--hpa',action='store_true', help='val only')
+    parser.add_argument('--hpa', default=0, type=int, help='lr scheduler patience')
     parser.add_argument('--pos_weight', default=20, type=int, help='end index of classes')
     parser.add_argument('--tuning_th',action='store_true', help='tuning threshold')
     parser.add_argument('--no_first_val',action='store_true', help='tuning threshold')
