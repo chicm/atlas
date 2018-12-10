@@ -40,20 +40,20 @@ def strong_aug(p=1):
             MedianBlur(blur_limit=3, p=.1),
             Blur(blur_limit=3, p=.1),
         ], p=0.2),
-        ShiftScaleRotate(shift_limit=0.0625, scale_limit=0.2, rotate_limit=45, p=.2),
+        ShiftScaleRotate(shift_limit=0.0625, scale_limit=0.2, rotate_limit=45, p=.4),
         OneOf([
             OpticalDistortion(p=0.3),
             GridDistortion(p=.1),
             IAAPiecewiseAffine(p=0.3),
         ], p=0.2),
         OneOf([
-            #CLAHE(clip_limit=2),
+            CLAHE(clip_limit=2),
             IAASharpen(),
             IAAEmboss(),
             RandomContrast(),
             RandomBrightness(),
         ], p=0.3),
-        #HueSaturationValue(p=0.3),
+        HueSaturationValue(p=0.3),
     ], p=p)
 
 def augment_inclusive(p=.9):
@@ -149,7 +149,7 @@ class ImageDataset(data.Dataset):
         #Image.fromarray(img[:,:,3], mode='L').show()
         if self.train_mode:
             #aug = augment_inclusive()
-            aug = weak_aug()
+            aug = strong_aug() #weak_aug()
             img = augment_4chan(aug, img)
         elif self.tta_index != 0:
             #print(self.tta_index)
@@ -207,8 +207,8 @@ def get_train_val_loader(batch_size=4, val_batch_size=4, dev_mode=False, val_num
         labels_train = df_train.set_index('Id').loc[img_ids_train].Target.values.tolist()
 
     if dev_mode:
-        img_ids_train = img_ids_train[3:4]
-        labels_train = labels_train[3:4]
+        img_ids_train = img_ids_train[4:5]
+        labels_train = labels_train[4:5]
 
     dset_train = ImageDataset(True, img_dir, img_ids_train, labels_train, img_transform=None)
     dloader_train = data.DataLoader(dset_train, batch_size=batch_size, shuffle=True, num_workers=4, drop_last=True)

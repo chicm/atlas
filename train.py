@@ -58,8 +58,12 @@ def train(args):
     else:
         optimizer = optim.SGD(model.parameters(), momentum=0.9, weight_decay=0.0001, lr=args.lr)
 
+    opt_mode = 'max'
+    if args.save_loss:
+        opt_mode = 'min'
+
     if args.lrs == 'plateau':
-        lr_scheduler = ReduceLROnPlateau(optimizer, mode='max', factor=args.factor, patience=args.patience, min_lr=args.min_lr)
+        lr_scheduler = ReduceLROnPlateau(optimizer, mode=opt_mode, factor=args.factor, patience=args.patience, min_lr=args.min_lr)
     else:
         lr_scheduler = CosineAnnealingLR(optimizer, args.t_max, eta_min=args.min_lr)
 
@@ -83,7 +87,10 @@ def train(args):
         return
 
     if args.lrs == 'plateau':
-        lr_scheduler.step(best_val_score)
+        if args.save_loss:
+            lr_scheduler.step(best_val_loss)
+        else:
+            lr_scheduler.step(best_val_score)
     else:
         lr_scheduler.step()
     model.train()
@@ -118,18 +125,21 @@ def train(args):
                 model.train()
                 _save_ckp = ''
 
-                if args.always_save or val_score  > best_val_score :
-                    best_val_score = val_score
-                    best_val_loss = val_loss
-
+                if args.always_save or (val_score > best_val_score and not args.save_loss) or (args.save_loss and val_loss < best_val_loss):
                     if args.multi_gpu:
                         torch.save(model.module.state_dict(), model_file)
                     else:
                         torch.save(model.state_dict(), model_file)
                     _save_ckp = '*'
                 
+                best_val_score = max(best_val_score, val_score)
+                best_val_loss = min(best_val_loss, val_loss)
+                
                 if args.lrs == 'plateau':
-                    lr_scheduler.step(val_score)
+                    if args.save_loss:
+                        lr_scheduler.step(best_val_loss)
+                    else:
+                        lr_scheduler.step(best_val_score)
                 else:
                     lr_scheduler.step()
                 current_lr = get_lrs(optimizer) 
@@ -227,6 +237,7 @@ if __name__ == '__main__':
     parser.add_argument('--init_ckp', default=None, type=str, help='init checkpoint')
     parser.add_argument('--always_save',action='store_true', help='alway save')
     parser.add_argument('--multi_gpu',action='store_true', help='use multi gpus')
+    parser.add_argument('--save_loss',action='store_true', help='use multi gpus')
     parser.add_argument('--balanced',action='store_true', help='use balanced sampler')
     args = parser.parse_args()
 
