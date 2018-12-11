@@ -152,7 +152,7 @@ class ImageDataset(data.Dataset):
         #Image.fromarray(img[:,:,3], mode='L').show()
         if self.train_mode:
             #aug = augment_inclusive()
-            aug = strong_aug() #weak_aug()
+            aug = weak_aug()
             img = augment_4chan(aug, img)
         elif self.tta_index != 0:
             #print(self.tta_index)

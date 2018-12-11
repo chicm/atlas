@@ -36,6 +36,21 @@ class FocalLoss(nn.Module):
 
 focal_loss = FocalLoss()
 
+def f1_loss(logits, labels):
+    __small_value=1e-6
+    beta = 1
+    batch_size = logits.size()[0]
+    p = F.sigmoid(logits)
+    l = labels
+    num_pos = torch.sum(p, 1) + __small_value
+    num_pos_hat = torch.sum(l, 1) + __small_value
+    tp = torch.sum(l * p, 1)
+    precise = tp / num_pos
+    recall = tp / num_pos_hat
+    fs = (1 + beta * beta) * precise * recall / (beta * beta * precise + recall + __small_value)
+    loss = fs.sum() / batch_size
+    return (1 - loss)
+
 def acc(preds,targs,th=0.0):
     preds = (preds > th).int()
     targs = targs.int()
@@ -45,6 +60,7 @@ def criterion(outputs, targets):
     #return F.binary_cross_entropy_with_logits(outputs, targets)
 
     return focal_loss(outputs, targets)
+    #return f1_loss(outputs, targets)
 
 
 def train(args):
