@@ -96,6 +96,14 @@ train_prob = [
     0.005536, 0.121556, 0.025811, 0.095424, 0.010363,
     0.264804, 0.010556, 0.000354]
 
+hpa_prob = [
+    0.379817, 0.024665, 0.096533, 0.024105, 0.043941,
+    0.046852, 0.037418, 0.087784, 0.002212, 0.002128,
+    0.002156, 0.013942, 0.020396, 0.012417, 0.020662,
+    0.000588, 0.010079, 0.003024, 0.013284, 0.028529,
+    0.003472, 0.132368, 0.025687, 0.098254, 0.001484,
+    0.3883, 0.005095, 0.001624]
+
 def sigmoid_np(x):
     return 1.0/(1.0 + np.exp(np.clip(-x, -100, 100)))
 
@@ -118,6 +126,11 @@ def find_lb_th(args, preds):
     th_t[th_t<0.01] = 0.01
     th_t[th_t>0.9] = 0.9
     print(th_t)
+
+    ## 
+    my_ths = my_find_th(preds, lb_prob)
+    print(my_ths)
+    #th_t = my_ths
 
     preds = (preds > th_t).astype(np.uint8)
     print(preds.shape)
@@ -155,6 +168,31 @@ def create_submission(args, preds, outfile):
     update_with_test_matches(meta)
 
     meta.to_csv(outfile, index=False)
+'''
+def my_f1(y, pred):
+    tp = np.sum(y*pred)
+    precision = tp / (np.sum(pred) + 1e-8)
+    recall = tp / (np.sum(y) + 1e-8)
+    F1 = 2 * (precision * recall) / (precision + recall + 1e-8)
+    return F1
+'''
+
+def my_find_th(outputs, probs):
+    print(outputs.shape)
+    n_classes = len(probs)
+    n_samples = outputs.shape[0]
+    ths = [0.5] * n_classes
+    for i in range(n_classes):
+        best_th = ths[i]
+        best_error = abs(np.sum((outputs[:,i] > best_th).astype(np.uint8)) / n_samples - probs[i])
+        for j in range(1, 1000):
+            cur_th = j / 1000.
+            error = abs(np.sum((outputs[:,i] > cur_th).astype(np.uint8)) / n_samples - probs[i])
+            if error < best_error:
+                best_error = error
+                best_th = cur_th
+        ths[i] = best_th
+    return ths
 
 def save_raw_csv(np_file):
     df = pd.read_csv(settings.SAMPLE_SUBMISSION)

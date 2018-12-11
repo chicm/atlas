@@ -3,6 +3,7 @@ import numpy as np
 from sklearn.utils import shuffle
 from PIL import Image
 import cv2
+from sklearn.metrics import f1_score
 import settings
 
 def print_counts(df):
@@ -45,6 +46,27 @@ def check_train_distribution():
     df_val = df.iloc[split_index:]
 
     #print_counts(df_val)
+
+def check_hpa_distribution():
+    df = pd.read_csv('HPAv18RGBY_WithoutUncertain_wodpl.csv')
+    print_counts(df)
+
+def test_f1():
+    y =    np.array([1,1,1,1,1,0,0,0,0,0])
+    pred = np.array([0,0,0,0,0,0,0,0,0,0])
+    score = f1_score(y, pred)
+    print(score)
+    print('my f1:', my_f1(y, pred))
+
+def my_f1(y, pred):
+    tp = np.sum(y*pred)
+    precision = tp / (np.sum(pred) + 1e-8)
+    recall = tp / (np.sum(y) + 1e-8)
+    F1 = 2 * (precision * recall) / (precision + recall + 1e-8)
+    return F1
+
 if __name__ == '__main__':
     #check_hpa()
-    check_hpa_img()
+    #check_hpa_img()
+    #check_hpa_distribution()
+    test_f1()
