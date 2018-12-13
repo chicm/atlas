@@ -124,7 +124,7 @@ def find_lb_th(args, preds):
     #preds = np.load(np_file)
     th_t = fit_test(preds, lb_prob)
     th_t[th_t<0.01] = 0.01
-    th_t[th_t>0.9] = 0.9
+    th_t[th_t>0.8] = 0.8
     print(th_t)
 
     ## 
