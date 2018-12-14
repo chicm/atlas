@@ -89,6 +89,19 @@ def weak_aug(p=1.):
         #HueSaturationValue(p=.33)
     ], p=p)
 
+def weak_aug_tta(p=1.):
+    return Compose([
+        RandomRotate90(p=1.),
+        Flip(p=1.),
+        ShiftScaleRotate(shift_limit=0.0625, scale_limit=0.1, rotate_limit=10, p=1. ),
+        RandomBrightnessContrast(p=1.),
+        #Blur(blur_limit=3, p=.33),
+        #OpticalDistortion(p=.33),
+        #GridDistortion(p=1.33),
+        #HueSaturationValue(p=.33)
+    ], p=p)
+
+
 #def augment(aug, image):
 #    return aug(image=image)['image']
 
@@ -156,7 +169,10 @@ class ImageDataset(data.Dataset):
             img = augment_4chan(aug, img)
         elif self.tta_index != 0:
             #print(self.tta_index)
-            aug = get_tta_aug(self.tta_index)
+            if self.tta_index <= 7:
+                aug = get_tta_aug(self.tta_index)
+            else:
+                aug = weak_aug_tta()
             #print(aug)
             img = augment_4chan(aug, img)
         else:

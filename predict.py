@@ -143,7 +143,7 @@ def ensemble_np(args, np_files):
     outputs_all = []
     for np_file in np_files:
         outputs_all.append(np.load(np_file))
-    outputs = np.max(outputs_all, 0)
+    outputs = np.mean(outputs_all, 0)
     print(outputs.shape)
     #outputs = torch.from_numpy(outputs)
     #_, preds = outputs.topk(3, 1, True, True)
