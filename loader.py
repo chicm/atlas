@@ -74,7 +74,7 @@ def augment_inclusive(p=.9):
         Blur(blur_limit=3, p=.33),
         OpticalDistortion(p=.33),
         GridDistortion(p=.33),
-        HueSaturationValue(p=.33)
+        #HueSaturationValue(p=.33)
     ], p=p)
 
 def weak_aug(p=1.):
@@ -146,7 +146,7 @@ def open_rgby(img_dir, id, suffix): #a function that reads RGBY image
         img = open_hpa_img(img_dir,id)
     #img = np.stack(img, axis=-1)
     #img = img.transpose((2,0,1))
-    return img
+    return img.astype(np.uint8)
 
 def open_hpa_img(img_dir, id):
     colors = ['red','green','blue']
@@ -181,8 +181,8 @@ class ImageDataset(data.Dataset):
         #cv2.imshow('img', img[:,:,3])
         #cv2.waitKey(0)
         if self.train_mode:
-            #aug = augment_inclusive()
-            aug = weak_aug()
+            aug = augment_inclusive()
+            #aug = weak_aug()
             img = augment_4chan(aug, img)
         elif self.tta_index != 0:
             #print(self.tta_index)
