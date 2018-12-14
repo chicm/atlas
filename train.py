@@ -13,7 +13,7 @@ from loader import get_train_val_loader
 from models import ProteinNet, create_model
 import settings
 
-VAL_BATCH_MULTI=8
+VAL_BATCH_MULTI=4
 
 class FocalLoss(nn.Module):
     def __init__(self, gamma=2):

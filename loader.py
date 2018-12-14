@@ -138,13 +138,27 @@ def open_rgby(img_dir, id, suffix): #a function that reads RGBY image
     #img = [cv2.imread(os.path.join(img_dir, id+'_'+color+'.png'), flags).astype(np.float32)/255
     #       for color in colors]
     if suffix == 'png':
-        img = [np.array(Image.open(os.path.join(img_dir, id+'_'+color+'.'+suffix)).convert('L')) for color in colors]
+        #img = [np.array(Image.open(os.path.join(img_dir, id+'_'+color+'.'+suffix)).convert('L')) for color in colors]
+        img = [cv2.imread(os.path.join(img_dir, id+'_'+color+'.png'))[:,:,0] for color in colors]
+        img = np.stack(img, axis=-1)
     else:
-        img = [np.array(Image.open(os.path.join(img_dir, id+'_'+color+'.'+suffix)).convert('L').resize((512,512))) for color in colors]
-    img = np.stack(img, axis=-1)
+        #img = [np.array(Image.open(os.path.join(img_dir, id+'_'+color+'.'+suffix)).convert('L').resize((512,512))) for color in colors]
+        img = open_hpa_img(img_dir,id)
+    #img = np.stack(img, axis=-1)
     #img = img.transpose((2,0,1))
     return img
 
+def open_hpa_img(img_dir, id):
+    colors = ['red','green','blue']
+    hpa_img = np.zeros((512, 512, 4))
+    for i, c in enumerate(colors):
+        img = cv2.imread(os.path.join(img_dir, id+'_'+c+'.jpg'))
+        img = cv2.resize(img, (512,512))
+        hpa_img[:,:,i] = img[:,:,i]
+    yellow_img = cv2.imread(os.path.join(img_dir, id+'_yellow.jpg'))
+    yellow_img = cv2.resize(yellow_img, (512,512))
+    hpa_img[:,:,3] = yellow_img[:,:,0]
+    return hpa_img
 
 class ImageDataset(data.Dataset):
     def __init__(self, train_mode, img_dir, img_ids, labels=None, suffix=None, tta_index=0, hpa_img_dir=settings.HPA_IMG_DIR):
@@ -163,6 +177,9 @@ class ImageDataset(data.Dataset):
             img = open_rgby(self.hpa_img_dir, self.img_ids[index], self.suffix[index])
         #Image.fromarray(img[:,:,0:3], mode='RGB').show()
         #Image.fromarray(img[:,:,3], mode='L').show()
+        #cv2.imshow('img', img[:,:,0:3])
+        #cv2.imshow('img', img[:,:,3])
+        #cv2.waitKey(0)
         if self.train_mode:
             #aug = augment_inclusive()
             aug = weak_aug()
@@ -266,7 +283,7 @@ def get_hpa_train_df(train_num):
     df_train = shuffle(df_train)
 
     return df_train.iloc[:train_num]
-'''
+
 def get_hpa_loader(batch_size=4, dev_mode=False):
     df_train = pd.read_csv('HPAv18RGBY_WithoutUncertain_wodpl.csv')
     df_train = shuffle(df_train)
@@ -276,12 +293,13 @@ def get_hpa_loader(batch_size=4, dev_mode=False):
     img_dir = settings.HPA_IMG_DIR
     img_ids_train = df_train['Id'].values.tolist()
     labels_train = df_train['Target'].values.tolist()
+    print(len(img_ids_train))
 
-    dset_train = ImageDataset(True, img_dir, img_ids_train, labels_train, img_transform=None, suffix='.jpg')
+    dset_train = ImageDataset(True, img_dir, img_ids_train, labels_train, ['jpg']*len(img_ids_train))
     dloader_train = data.DataLoader(dset_train, batch_size=batch_size, shuffle=True, num_workers=4, drop_last=True)
     dloader_train.num = len(dset_train)
-    return dloader_train, None
-'''
+    return dloader_train
+
 
 def get_test_loader(batch_size=4, dev_mode=False, tta_index=0):
     df = pd.read_csv(settings.SAMPLE_SUBMISSION)
@@ -298,7 +316,7 @@ def get_test_loader(batch_size=4, dev_mode=False, tta_index=0):
     return dloader
 
 def test_train_loader():
-    loader, _ = get_train_val_loader(batch_size=1, dev_mode=True, hpa=20000)
+    loader, _ = get_train_val_loader(batch_size=1, dev_mode=True, hpa=0)
     for i, (img, target) in enumerate(loader):
         print(img.size(), target.size(), torch.max(img))
         #print(img)
@@ -316,7 +334,13 @@ def test_test_loader(tta_index=0):
     for img in loader:
         print(img.size())
 
+def test_hpa_loader():
+    loader = get_hpa_loader(batch_size=1,dev_mode=True)
+    for img, target in loader:
+        print(img.size(), target.size())
+
 if __name__ == '__main__':
     test_train_loader()
     #test_val_loader()
     #test_test_loader(tta_index=3)
+    #test_hpa_loader()
