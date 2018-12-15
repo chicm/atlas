@@ -9,6 +9,7 @@ from net.senet import se_resnext50_32x4d, se_resnet50, senet154, se_resnet152, s
 from net.densenet import densenet121, densenet161, densenet169, densenet201
 from net.nasnet import nasnetalarge
 from net.inceptionresnetv2 import inceptionresnetv2
+from net.dpn import dpn98, dpn107, dpn131, dpn92
 import settings
 
 
@@ -38,6 +39,11 @@ class ProteinNet(nn.Module):
             self.backbone.conv2d_1a.conv = nn.Conv2d(4, 32, kernel_size=3, stride=2, padding=0, bias=False)
             self.backbone.conv2d_1a.conv.weight = torch.nn.Parameter(torch.cat((w, w[:, 2, :, :].unsqueeze(1)), dim=1))
             #self.backbone.maxpool_3a = nn.MaxPool2d(4, stride=2)
+        elif backbone_name in ['dpn98', 'dpn92', 'dpn107', 'dpn131']:
+            self.backbone = eval(backbone_name)()
+            w = self.backbone.features.conv1_1.conv.weight
+            self.backbone.features.conv1_1.conv = nn.Conv2d(4, 96, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
+            self.backbone.features.conv1_1.conv.weight = torch.nn.Parameter(torch.cat((w, w[:, 2, :, :].unsqueeze(1)), dim=1))
         else:
             raise ValueError('unsupported backbone name {}'.format(backbone_name))
         #self.backbone.last_linear = nn.Linear(2048, 7272) # for model convert
@@ -60,6 +66,8 @@ class ProteinNet(nn.Module):
             ftr_num = 4032
         elif backbone_name == 'inceptionresnetv2':
             ftr_num = 1536
+        elif backbone_name == 'dpn98':
+            ftr_num = 2688
         else:
             ftr_num = 2048
 
