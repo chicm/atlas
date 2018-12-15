@@ -9,6 +9,8 @@ from net.senet import se_resnext50_32x4d, se_resnet50, senet154, se_resnet152, s
 from net.densenet import densenet121, densenet161, densenet169, densenet201
 from net.nasnet import nasnetalarge
 from net.inceptionresnetv2 import inceptionresnetv2
+from net.inceptionv4 import inceptionv4
+from net.xception import xception
 from net.dpn import dpn98, dpn107, dpn131, dpn92
 import settings
 
@@ -39,6 +41,16 @@ class ProteinNet(nn.Module):
             self.backbone.conv2d_1a.conv = nn.Conv2d(4, 32, kernel_size=3, stride=2, padding=0, bias=False)
             self.backbone.conv2d_1a.conv.weight = torch.nn.Parameter(torch.cat((w, w[:, 2, :, :].unsqueeze(1)), dim=1))
             #self.backbone.maxpool_3a = nn.MaxPool2d(4, stride=2)
+        elif backbone_name in ['inceptionv4']:
+            self.backbone = eval(backbone_name)()
+            w = self.backbone.features[0].conv.weight
+            self.backbone.features[0].conv = nn.Conv2d(4, 32, kernel_size=(3, 3), stride=(2, 2), bias=False)
+            self.backbone.features[0].conv.weight = torch.nn.Parameter(torch.cat((w, w[:, 2, :, :].unsqueeze(1)), dim=1))
+        elif backbone_name in ['xception']:
+            self.backbone = eval(backbone_name)()
+            w = self.backbone.conv1.weight
+            self.backbone.conv1 = nn.Conv2d(4, 32, 3, 2, 0, bias=False)
+            self.backbone.conv1.weight = torch.nn.Parameter(torch.cat((w, w[:, 2, :, :].unsqueeze(1)), dim=1))
         elif backbone_name in ['dpn98', 'dpn92', 'dpn107', 'dpn131']:
             self.backbone = eval(backbone_name)()
             w = self.backbone.features.conv1_1.conv.weight
@@ -64,12 +76,12 @@ class ProteinNet(nn.Module):
             ftr_num = 1920
         elif backbone_name == 'nasnetalarge':
             ftr_num = 4032
-        elif backbone_name == 'inceptionresnetv2':
+        elif backbone_name in ['inceptionresnetv2', 'inceptionv4']:
             ftr_num = 1536
-        elif backbone_name == 'dpn98':
+        elif backbone_name in ['dpn98', 'dpn92', 'dpn107', 'dpn131']:
             ftr_num = 2688
         else:
-            ftr_num = 2048
+            ftr_num = 2048  # xception, res50, etc...
 
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
         self.logit = nn.Linear(ftr_num, num_classes)
