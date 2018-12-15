@@ -15,6 +15,13 @@ import settings
 
 VAL_BATCH_MULTI=4
 
+cls_weights = torch.tensor(np.array([ 
+    0.88096324,  2.82391247,  1.66182672,  2.53103732,  2.31994209,  1.99482019,
+    3.14970394,  1.88244153, 13.73605639,  14.90711985, 18.89822365, 3.02475302,
+    3.81246426,  4.31531852,  3.06281946,  21.82178902, 4.34372243,  6.90065559,
+    3.32963579,  2.59762167,  7.62492852,  1.62714594,  3.53112276,  1.83648612,
+    5.57278213,  1.10243466,  5.5215763,   30.15113446]).astype(np.float32)).cuda()
+
 class FocalLoss(nn.Module):
     def __init__(self, gamma=2):
         super().__init__()
@@ -57,9 +64,10 @@ def acc(preds,targs,th=0.0):
     return (preds==targs).float().mean()
 
 def criterion(outputs, targets):
-    #return F.binary_cross_entropy_with_logits(outputs, targets)
+    bce_loss = F.binary_cross_entropy_with_logits(outputs, targets, cls_weights)
+    f_loss = focal_loss(outputs, targets)
 
-    return focal_loss(outputs, targets)
+    return bce_loss + f_loss
     #return f1_loss(outputs, targets)
 
 

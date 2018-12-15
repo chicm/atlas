@@ -13,6 +13,7 @@ def print_counts(df):
     counts['prob'] = counts.counts.map(lambda x: x / df.shape[0])
     print(type(counts), counts)
     print([round(x, 6) for x in counts.prob.values.tolist()])
+    print(100/np.sqrt(counts['counts'].values))
 
 def check_hpa():
     df1 = pd.read_csv('HPAv18RBGY_wodpl.csv')
@@ -69,4 +70,5 @@ if __name__ == '__main__':
     #check_hpa()
     #check_hpa_img()
     #check_hpa_distribution()
-    test_f1()
+    #test_f1()
+    check_train_distribution()
