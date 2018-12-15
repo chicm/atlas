@@ -67,7 +67,7 @@ def criterion(outputs, targets):
     bce_loss = F.binary_cross_entropy_with_logits(outputs, targets, cls_weights)
     f_loss = focal_loss(outputs, targets)
 
-    return bce_loss + f_loss
+    return bce_loss + f_loss, f_loss.item()
     #return f1_loss(outputs, targets)
 
 
@@ -99,13 +99,13 @@ def train(args):
     best_val_score = 0.
     best_val_loss = 10000.
 
-    print('epoch | itr |   lr    |   %             |  loss  |  avg   |  loss  | optim f1 |  best f1  |  thresh  |  time | save |')
+    print('epoch | itr |   lr    |   %             |  loss  |  avg   |  loss  | floss  | optim f1 |  best f1  |  thresh  |  time | save |')
 
     if not args.no_first_val:
-        best_val_loss, best_val_score, th = validate(args, model, val_loader, args.batch_size*VAL_BATCH_MULTI)
+        best_val_loss, best_val_score, th, f_loss = validate(args, model, val_loader, args.batch_size*VAL_BATCH_MULTI)
 
-        print('val   |     |         |                 |        |        | {:.4f} | {:.4f}   |  {:.4f}   |   {:s} |       |'.format(
-            best_val_loss, best_val_score, best_val_score, ''))
+        print('val   |     |         |                 |        |        | {:.4f} | {:.4f} | {:.4f}   |  {:.4f}   |   {:s} |       |'.format(
+            best_val_loss, f_loss, best_val_score, best_val_score, ''))
 
     if args.val:
         return
@@ -132,7 +132,7 @@ def train(args):
             optimizer.zero_grad()
             output = model(x)
             
-            loss = criterion(output, target)
+            loss, _ = criterion(output, target)
             loss.backward()
             optimizer.step()
 
@@ -142,7 +142,7 @@ def train(args):
                     loss.item(), train_loss/(batch_idx+1)), end='')
 
             if iteration % args.iter_save == 0:
-                val_loss, val_score, th = validate(args, model, val_loader, args.batch_size*VAL_BATCH_MULTI)
+                val_loss, val_score, th, f_loss = validate(args, model, val_loader, args.batch_size*VAL_BATCH_MULTI)
                 model.train()
                 _save_ckp = ''
 
@@ -165,8 +165,8 @@ def train(args):
                     lr_scheduler.step()
                 current_lr = get_lrs(optimizer) 
 
-                print(' {:.4f} | {:.4f}   |  {:.4f}   |  {:s} | {:.1f}  | {:4s} |'.format(
-                    val_loss, val_score, best_val_score, '', (time.time() - bg) / 60, _save_ckp))
+                print(' {:.4f} | {:.4f} | {:.4f}   |  {:.4f}   |  {:s} | {:.1f}  | {:4s} |'.format(
+                    val_loss, f_loss, val_score, best_val_score, '', (time.time() - bg) / 60, _save_ckp))
                 bg = time.time()
 
 def sigmoid_np(x):
@@ -194,14 +194,16 @@ def validate(args, model, val_loader, batch_size):
     #print('\nvalidating...')
     model.eval()
     val_loss = 0
+    val_focal_loss = 0.
     targets = None
     outputs = None
     with torch.no_grad():
         for x, target in val_loader:
             x, target = x.cuda(), target.cuda()
             output = model(x)
-            loss = criterion(output, target)
+            loss, f_loss = criterion(output, target)
             val_loss += loss.item()
+            val_focal_loss += f_loss
 
             if targets is None:
                 targets = target.cpu()
@@ -227,7 +229,7 @@ def validate(args, model, val_loader, batch_size):
     #print(optimized_score)
     #print(optimized_score)
 
-    return val_loss / n_batchs, optimized_score, best_th
+    return val_loss / n_batchs, optimized_score, best_th, val_focal_loss / n_batchs
        
 def get_lrs(optimizer):
     lrs = []
