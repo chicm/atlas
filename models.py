@@ -10,6 +10,7 @@ from net.densenet import densenet121, densenet161, densenet169, densenet201
 from net.nasnet import nasnetalarge
 from net.inceptionresnetv2 import inceptionresnetv2
 from net.inceptionv4 import inceptionv4
+from net.bninception import bninception
 from net.xception import xception
 from net.dpn import dpn98, dpn107, dpn131, dpn92
 import settings
@@ -56,6 +57,11 @@ class ProteinNet(nn.Module):
             w = self.backbone.features.conv1_1.conv.weight
             self.backbone.features.conv1_1.conv = nn.Conv2d(4, 96, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
             self.backbone.features.conv1_1.conv.weight = torch.nn.Parameter(torch.cat((w, w[:, 2, :, :].unsqueeze(1)), dim=1))
+        elif backbone_name in ['bninception']:
+            self.backbone = eval(backbone_name)()
+            w = self.backbone.conv1_7x7_s2.weight
+            self.backbone.conv1_7x7_s2 = nn.Conv2d(4, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3))
+            self.backbone.conv1_7x7_s2.weight = torch.nn.Parameter(torch.cat((w, w[:, 2, :, :].unsqueeze(1)), dim=1))
         else:
             raise ValueError('unsupported backbone name {}'.format(backbone_name))
         #self.backbone.last_linear = nn.Linear(2048, 7272) # for model convert
@@ -80,6 +86,8 @@ class ProteinNet(nn.Module):
             ftr_num = 1536
         elif backbone_name in ['dpn98', 'dpn92', 'dpn107', 'dpn131']:
             ftr_num = 2688
+        elif backbone_name in ['bninception']:
+            ftr_num = 1024
         else:
             ftr_num = 2048  # xception, res50, etc...
 
@@ -128,7 +136,7 @@ def create_model(backbone):
     return model, model_file
 
 def test():
-    model, _ = create_model('inceptionresnetv2')
+    model, _ = create_model('bninception')
     #print(model.backbone.features.conv0)
     x = torch.randn(4, 4, 512, 512).cuda()
     y = model(x)

@@ -13,7 +13,7 @@ from loader import get_train_val_loader
 from models import ProteinNet, create_model
 import settings
 
-VAL_BATCH_MULTI=4
+VAL_BATCH_MULTI=1
 
 cls_weights = torch.tensor(np.array([ 
     0.88096324,  2.82391247,  1.66182672,  2.53103732,  2.31994209,  1.99482019,
